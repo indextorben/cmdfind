@@ -100,6 +100,8 @@ npm run start -- "find large files"
 ## Beispiele
 
 ```bash
+cmdfind "?ping"
+cmdfind "!kill process on port 3000"
 cmdfind "Prozess auf Port 3000 beenden"
 cmdfind "find network ports"
 cmdfind "dns lookup" --platform windows --shell powershell
@@ -128,6 +130,8 @@ Hinweise:
 - Ohne `--all` wird der aktuelle Laufzeitkontext erkannt und im Ranking bevorzugt.
 - `--platform` und `--shell` bleiben echte Filter.
 - Mit `--json` wird auch der genutzte Index-Pfad ausgegeben.
+- Mit Trigger-Praefix (`?`, `!`, `/`) wird die Anfrage explizit als Command-Suche behandelt und Name/Command-Matches werden staerker gewichtet.
+- Trigger lassen sich ueber `CMDFIND_TRIGGER_CHARS` anpassen, z. B. `CMDFIND_TRIGGER_CHARS=\"@,#\"`.
 
 ## Abgedeckte IT/Admin-Seed-Commands (Auszug)
 

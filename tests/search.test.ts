@@ -133,4 +133,47 @@ describe("searchCommands", () => {
     });
     expect(results[0].entry.id).toBe("linux-netstat");
   });
+
+  it("boosts exact command-name matches when query is trigger-marked", () => {
+    const mock: CommandEntry[] = [
+      {
+        id: "generic-network",
+        task: "network_task",
+        name: "networktool",
+        platform: "linux",
+        shell: "bash",
+        sourceType: "external",
+        locallyAvailable: true,
+        category: "network",
+        dangerLevel: "safe",
+        command: "networktool --scan",
+        example: "networktool --scan",
+        description: { de: "Netzwerk Tool", en: "Network tool" },
+        keywords: { de: ["ping"], en: ["ping"] }
+      },
+      {
+        id: "exact-ping",
+        task: "network_ping",
+        name: "ping",
+        platform: "linux",
+        shell: "bash",
+        sourceType: "external",
+        locallyAvailable: true,
+        category: "network",
+        dangerLevel: "safe",
+        command: "ping -c 4 8.8.8.8",
+        example: "ping -c 4 8.8.8.8",
+        description: { de: "Ping", en: "Ping" },
+        keywords: { de: ["netzwerk"], en: ["network"] }
+      }
+    ];
+
+    const results = searchCommands(mock, "ping", {
+      language: "en",
+      currentPlatform: "linux",
+      currentShell: "bash",
+      triggered: true
+    });
+    expect(results[0].entry.id).toBe("exact-ping");
+  });
 });

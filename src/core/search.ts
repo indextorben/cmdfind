@@ -7,6 +7,8 @@ function scoreEntry(entry: CommandEntry, query: string, language: Language, opti
   const normalizedQuery = normalizeText(query);
   const queryTokens = tokenize(query);
   const adminQuery = isAdminQuery(query);
+  const normalizedName = normalizeText(entry.name);
+  const normalizedCommand = normalizeText(entry.command);
 
   if (queryTokens.length === 0) {
     return null;
@@ -89,6 +91,15 @@ function scoreEntry(entry: CommandEntry, query: string, language: Language, opti
       score += 24;
     } else {
       score -= 10;
+    }
+  }
+
+  if (options.triggered) {
+    if (normalizedQuery.includes(normalizedName) || queryTokens.some((token) => normalizedName.startsWith(token))) {
+      score += 24;
+    }
+    if (normalizedQuery.includes(normalizedCommand)) {
+      score += 10;
     }
   }
 

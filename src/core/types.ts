@@ -42,6 +42,7 @@ export interface SearchOptions {
   limit?: number;
   preferLocal?: boolean;
   preferAdmin?: boolean;
+  triggered?: boolean;
 }
 
 export interface SearchResult {

@@ -5,7 +5,7 @@ import { formatResults } from "../core/formatter.js";
 import { discoverAndIndexLocalCommands, getIndexLocation } from "../core/local-index.js";
 import { searchCommands } from "../core/search.js";
 import type { Language, Platform, SearchOptions, Shell } from "../core/types.js";
-import { detectPlatform, detectShell, inferLanguage } from "../core/utils.js";
+import { detectPlatform, detectShell, inferLanguage, parseTriggerQuery } from "../core/utils.js";
 
 const VALID_PLATFORMS: Platform[] = ["windows", "linux", "macos"];
 const VALID_SHELLS: Shell[] = ["powershell", "bash", "zsh"];
@@ -38,6 +38,7 @@ Options:
   -h, --help                         Show this help
 
 Examples:
+  cmdfind "?ping"
   cmdfind "grosse dateien finden"
   cmdfind "find large files" --platform linux --shell bash
   cmdfind "Prozess auf Port 3000 beenden" --platform windows --shell powershell
@@ -141,7 +142,8 @@ function parseArgs(argv: string[]): CliArgs {
   }
 
   const query = queryParts.join(" ").trim();
-  if (!query) {
+  const parsedTrigger = parseTriggerQuery(query);
+  if (!parsedTrigger.query) {
     printHelp();
     process.exit(1);
   }
@@ -150,11 +152,12 @@ function parseArgs(argv: string[]): CliArgs {
     platform,
     shell,
     language,
-    limit
+    limit,
+    triggered: parsedTrigger.triggered
   };
 
   return {
-    query,
+    query: parsedTrigger.query,
     options,
     json,
     useCurrentContext,

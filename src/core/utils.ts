@@ -69,6 +69,28 @@ export function isAdminQuery(query: string): boolean {
   return tokens.some((token) => ADMIN_HINTS.has(token));
 }
 
+export function parseTriggerQuery(rawQuery: string): { query: string; triggered: boolean } {
+  const trimmed = rawQuery.trim();
+  if (!trimmed) {
+    return { query: trimmed, triggered: false };
+  }
+
+  const triggers = (process.env.CMDFIND_TRIGGER_CHARS || "?,!,/")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const matched = triggers.find((trigger) => trimmed.startsWith(trigger));
+  if (!matched) {
+    return { query: trimmed, triggered: false };
+  }
+
+  return {
+    query: trimmed.slice(matched.length).trim(),
+    triggered: true
+  };
+}
+
 export function detectPlatform(): Platform {
   if (process.platform === "win32") {
     return "windows";
