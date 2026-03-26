@@ -21,7 +21,7 @@ export function formatResults(results: SearchResult[], language: Language): stri
       const lines = [
         `${index + 1}. ${entry.task.replaceAll("_", " ")}`,
         `   COMMAND     : ${bold(entry.command)}`,
-        `   description : ${entry.description[language]}`,
+        `   note        : ${entry.description[language]}`,
         `   example     : ${entry.example}`,
         `   platform    : ${capitalize(entry.platform)}`,
         `   shell       : ${capitalize(entry.shell)}`,

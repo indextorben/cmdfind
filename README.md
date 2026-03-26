@@ -88,29 +88,28 @@ git remote set-url origin https://github.com/indextorben/cmdfind.git
 Development:
 
 ```bash
-npm run dev -- "#grosse dateien finden"
+npm run dev -- grosse dateien finden
 ```
 
 Produktion:
 
 ```bash
-npm run start -- "#find large files"
+npm run start -- find large files
 ```
 
 ## Beispiele
 
 ```bash
 cmdfind ping
-cmdfind "#ping"
-cmdfind "#kill process on port 3000"
-cmdfind "#Prozess auf Port 3000 beenden"
-cmdfind "#find network ports"
-cmdfind "#dns lookup" --platform windows --shell powershell
-cmdfind "#list services" --lang en
-cmdfind "#show local commands" --json
-cmdfind "#ping host" --refresh-index
-cmdfind "#find text" --no-local-index
-cmdfind "#kill process" --all
+cmdfind kill process on port 3000
+cmdfind Prozess auf Port 3000 beenden
+cmdfind find network ports
+cmdfind dns lookup --platform windows --shell powershell
+cmdfind list services --lang en
+cmdfind show local commands --json
+cmdfind ping host --refresh-index
+cmdfind find text --no-local-index
+cmdfind kill process --all
 ```
 
 ## CLI-Optionen
@@ -131,8 +130,8 @@ Hinweise:
 - Ohne `--all` wird der aktuelle Laufzeitkontext erkannt und im Ranking bevorzugt.
 - `--platform` und `--shell` bleiben echte Filter.
 - Mit `--json` wird auch der genutzte Index-Pfad ausgegeben.
-- Anfrage funktioniert auch ohne Trigger, z. B. `cmdfind ping` oder `cmdfind find network ports`.
-- `#` ist optionaler Trigger fuer explizite Command-Suche. In Bash/Zsh nur in Quotes/escaped nutzen: `cmdfind "#ping"` oder `cmdfind \\#ping`.
+- Anfrage einfach direkt ohne Prefix eingeben, z. B. `cmdfind ping` oder `cmdfind find network ports`.
+- Optionaler Trigger-Prefix ist weiter moeglich, aber nicht noetig.
 - Optional kannst du das Trigger-Zeichen ueber `CMDFIND_TRIGGER_CHARS` aendern, z. B. `CMDFIND_TRIGGER_CHARS=\"@\"`.
 
 ## Abgedeckte IT/Admin-Seed-Commands (Auszug)
