@@ -1,0 +1,573 @@
+[
+  {
+    "id": "find_large_files_windows_powershell",
+    "task": "find_large_files",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "safe",
+    "command": "Get-ChildItem -Path . -File -Recurse | Where-Object { $_.Length -gt 100MB }",
+    "example": "Get-ChildItem -Path C:\\logs -File -Recurse | Where-Object { $_.Length -gt 500MB }",
+    "description": {
+      "de": "Findet Dateien groesser als 100 MB rekursiv.",
+      "en": "Finds files larger than 100 MB recursively."
+    },
+    "keywords": {
+      "de": ["grosse dateien", "dateien finden", "dateigroesse", "rekursiv"],
+      "en": ["find large files", "file size", "big files", "recursive"]
+    }
+  },
+  {
+    "id": "find_large_files_linux_bash",
+    "task": "find_large_files",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "safe",
+    "command": "find . -type f -size +100M",
+    "example": "find /var/log -type f -size +500M",
+    "description": {
+      "de": "Findet Dateien groesser als 100 MB im Verzeichnisbaum.",
+      "en": "Finds files larger than 100 MB in a directory tree."
+    },
+    "keywords": {
+      "de": ["grosse dateien finden", "find", "dateigroesse", "100mb"],
+      "en": ["find large files", "find", "bigger than", "100mb"]
+    }
+  },
+  {
+    "id": "find_large_files_macos_zsh",
+    "task": "find_large_files",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "safe",
+    "command": "find . -type f -size +100M",
+    "example": "find ~/Downloads -type f -size +300M",
+    "description": {
+      "de": "Sucht grosse Dateien auf macOS mit find.",
+      "en": "Searches large files on macOS using find."
+    },
+    "keywords": {
+      "de": ["grosse dateien", "mac", "find", "dateien suchen"],
+      "en": ["large files", "macos", "find", "search files"]
+    }
+  },
+
+  {
+    "id": "kill_process_on_port_windows_powershell",
+    "task": "kill_process_on_port",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "careful",
+    "command": "Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess -Force",
+    "example": "Stop-Process -Id (Get-NetTCPConnection -LocalPort 8080).OwningProcess -Force",
+    "description": {
+      "de": "Beendet den Prozess, der einen Port belegt.",
+      "en": "Stops the process that is using a given port."
+    },
+    "keywords": {
+      "de": ["prozess auf port beenden", "port 3000", "prozess killen", "dienst stoppen"],
+      "en": ["kill process on port", "free port", "stop process", "port 3000"]
+    }
+  },
+  {
+    "id": "kill_process_on_port_linux_bash",
+    "task": "kill_process_on_port",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "careful",
+    "command": "kill -9 $(lsof -ti:3000)",
+    "example": "kill -9 $(lsof -ti:8080)",
+    "description": {
+      "de": "Beendet den Prozess auf dem angegebenen Port.",
+      "en": "Kills the process bound to the given port."
+    },
+    "keywords": {
+      "de": ["prozess beenden", "port freigeben", "lsof", "kill"],
+      "en": ["kill process", "port in use", "lsof", "free port"]
+    }
+  },
+  {
+    "id": "kill_process_on_port_macos_zsh",
+    "task": "kill_process_on_port",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "careful",
+    "command": "kill -9 $(lsof -ti:3000)",
+    "example": "kill -9 $(lsof -ti:5173)",
+    "description": {
+      "de": "Stoppt einen Prozess anhand des Ports auf macOS.",
+      "en": "Stops a process by port on macOS."
+    },
+    "keywords": {
+      "de": ["prozess auf port", "port beenden", "lsof", "mac"],
+      "en": ["kill by port", "macos port", "stop process", "lsof"]
+    }
+  },
+
+  {
+    "id": "list_open_ports_windows_powershell",
+    "task": "list_open_ports",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "safe",
+    "command": "Get-NetTCPConnection | Select-Object LocalAddress,LocalPort,State,OwningProcess",
+    "example": "Get-NetTCPConnection -State Listen",
+    "description": {
+      "de": "Listet offene TCP-Ports und Prozesse.",
+      "en": "Lists open TCP ports and owning processes."
+    },
+    "keywords": {
+      "de": ["offene ports", "netzwerk", "tcp", "port liste"],
+      "en": ["list open ports", "network", "tcp", "listening ports"]
+    }
+  },
+  {
+    "id": "list_open_ports_linux_bash",
+    "task": "list_open_ports",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "safe",
+    "command": "ss -tulpen",
+    "example": "ss -tuln",
+    "description": {
+      "de": "Zeigt offene Ports und zugehoerige Prozesse.",
+      "en": "Shows open ports and related processes."
+    },
+    "keywords": {
+      "de": ["offene ports anzeigen", "ss", "netzwerk ports", "server ports"],
+      "en": ["open ports", "ss command", "list sockets", "network ports"]
+    }
+  },
+  {
+    "id": "list_open_ports_macos_zsh",
+    "task": "list_open_ports",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "safe",
+    "command": "lsof -nP -iTCP -sTCP:LISTEN",
+    "example": "lsof -nP -iTCP:3000 -sTCP:LISTEN",
+    "description": {
+      "de": "Listet hoerende TCP-Ports auf macOS.",
+      "en": "Lists listening TCP ports on macOS."
+    },
+    "keywords": {
+      "de": ["offene ports", "listening", "tcp", "macos netzwerk"],
+      "en": ["list ports", "listening tcp", "lsof", "macos"]
+    }
+  },
+
+  {
+    "id": "find_text_recursive_windows_powershell",
+    "task": "find_text_recursive",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "safe",
+    "command": "Get-ChildItem -Recurse -File | Select-String -Pattern \"TODO\"",
+    "example": "Get-ChildItem src -Recurse -File | Select-String -Pattern \"apiKey\"",
+    "description": {
+      "de": "Sucht Text rekursiv in Dateien.",
+      "en": "Searches text recursively inside files."
+    },
+    "keywords": {
+      "de": ["text suchen", "rekursiv", "todo finden", "in dateien"],
+      "en": ["find text", "recursive search", "grep alternative", "search in files"]
+    }
+  },
+  {
+    "id": "find_text_recursive_linux_bash",
+    "task": "find_text_recursive",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "safe",
+    "command": "grep -R \"TODO\" .",
+    "example": "grep -R \"apiKey\" src",
+    "description": {
+      "de": "Durchsucht Dateien rekursiv nach einem String.",
+      "en": "Recursively searches files for a string."
+    },
+    "keywords": {
+      "de": ["rekursiv suchen", "grep", "text finden", "dateien durchsuchen"],
+      "en": ["grep recursive", "find text", "search file content", "todo"]
+    }
+  },
+  {
+    "id": "find_text_recursive_macos_zsh",
+    "task": "find_text_recursive",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "safe",
+    "command": "grep -R \"TODO\" .",
+    "example": "grep -R \"FIXME\" app",
+    "description": {
+      "de": "Sucht rekursiv nach Text in Projektdateien.",
+      "en": "Searches recursively for text in project files."
+    },
+    "keywords": {
+      "de": ["text in dateien", "grep rekursiv", "todo", "fixme"],
+      "en": ["recursive grep", "search text", "find todo", "file content"]
+    }
+  },
+
+  {
+    "id": "disk_usage_top_windows_powershell",
+    "task": "disk_usage_top",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "safe",
+    "command": "Get-ChildItem -Path . -File -Recurse | Sort-Object Length -Descending | Select-Object -First 20 FullName,Length",
+    "example": "Get-ChildItem C:\\ -File -Recurse | Sort-Object Length -Descending | Select-Object -First 10 FullName,Length",
+    "description": {
+      "de": "Zeigt die groessten Dateien im Verzeichnisbaum.",
+      "en": "Shows the largest files in a directory tree."
+    },
+    "keywords": {
+      "de": ["speicherverbrauch", "groesste dateien", "disk usage", "platzfresser"],
+      "en": ["disk usage", "largest files", "storage", "top files"]
+    }
+  },
+  {
+    "id": "disk_usage_top_linux_bash",
+    "task": "disk_usage_top",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "safe",
+    "command": "du -ah . | sort -rh | head -n 20",
+    "example": "du -ah /var | sort -rh | head -n 15",
+    "description": {
+      "de": "Listet die groessten Dateien und Ordner auf.",
+      "en": "Lists the largest files and folders."
+    },
+    "keywords": {
+      "de": ["groesste ordner", "speicher", "du", "platz"],
+      "en": ["largest folders", "disk usage", "du", "storage"]
+    }
+  },
+  {
+    "id": "disk_usage_top_macos_zsh",
+    "task": "disk_usage_top",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "safe",
+    "command": "du -ah . | sort -rh | head -n 20",
+    "example": "du -ah ~/Library | sort -rh | head -n 20",
+    "description": {
+      "de": "Findet grosse Ordner und Dateien auf macOS.",
+      "en": "Finds large folders and files on macOS."
+    },
+    "keywords": {
+      "de": ["platzverbrauch", "ordnergroesse", "du", "macos"],
+      "en": ["disk space", "folder size", "du", "macos"]
+    }
+  },
+
+  {
+    "id": "list_processes_windows_powershell",
+    "task": "list_processes",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "safe",
+    "command": "Get-Process | Sort-Object CPU -Descending",
+    "example": "Get-Process | Select-Object -First 20 Name,Id,CPU",
+    "description": {
+      "de": "Zeigt laufende Prozesse, optional nach CPU sortiert.",
+      "en": "Shows running processes, optionally sorted by CPU."
+    },
+    "keywords": {
+      "de": ["prozesse anzeigen", "task manager terminal", "cpu", "prozessliste"],
+      "en": ["list processes", "running processes", "cpu usage", "process list"]
+    }
+  },
+  {
+    "id": "list_processes_linux_bash",
+    "task": "list_processes",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "safe",
+    "command": "ps aux --sort=-%cpu | head",
+    "example": "ps aux | grep node",
+    "description": {
+      "de": "Listet laufende Prozesse und CPU-Last.",
+      "en": "Lists running processes and CPU load."
+    },
+    "keywords": {
+      "de": ["prozesse", "ps aux", "cpu", "prozessliste"],
+      "en": ["ps aux", "processes", "cpu", "running tasks"]
+    }
+  },
+  {
+    "id": "list_processes_macos_zsh",
+    "task": "list_processes",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "safe",
+    "command": "ps aux | sort -nrk 3,3 | head",
+    "example": "ps aux | grep python",
+    "description": {
+      "de": "Zeigt aktive Prozesse auf macOS.",
+      "en": "Shows active processes on macOS."
+    },
+    "keywords": {
+      "de": ["aktive prozesse", "prozessliste", "mac", "cpu"],
+      "en": ["active processes", "macos", "ps", "cpu usage"]
+    }
+  },
+
+  {
+    "id": "copy_directory_windows_powershell",
+    "task": "copy_directory",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "safe",
+    "command": "Copy-Item -Path .\\source -Destination .\\backup -Recurse",
+    "example": "Copy-Item -Path C:\\app -Destination D:\\app-backup -Recurse",
+    "description": {
+      "de": "Kopiert ein Verzeichnis rekursiv.",
+      "en": "Copies a directory recursively."
+    },
+    "keywords": {
+      "de": ["ordner kopieren", "verzeichnis kopieren", "backup", "rekursiv"],
+      "en": ["copy directory", "folder copy", "backup", "recursive"]
+    }
+  },
+  {
+    "id": "copy_directory_linux_bash",
+    "task": "copy_directory",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "safe",
+    "command": "cp -r ./source ./backup",
+    "example": "cp -r /etc/nginx ./nginx-backup",
+    "description": {
+      "de": "Kopiert einen Ordner inkl. Unterordner.",
+      "en": "Copies a folder including subfolders."
+    },
+    "keywords": {
+      "de": ["ordner kopieren", "cp rekursiv", "backup", "verzeichnis"],
+      "en": ["cp -r", "copy folder", "directory backup", "recursive copy"]
+    }
+  },
+  {
+    "id": "copy_directory_macos_zsh",
+    "task": "copy_directory",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "safe",
+    "command": "cp -R ./source ./backup",
+    "example": "cp -R ~/Documents/project ~/Documents/project-backup",
+    "description": {
+      "de": "Kopiert Ordner rekursiv auf macOS.",
+      "en": "Copies folders recursively on macOS."
+    },
+    "keywords": {
+      "de": ["ordner duplizieren", "kopieren", "rekursiv", "macos"],
+      "en": ["copy directory", "cp -R", "duplicate folder", "macos"]
+    }
+  },
+
+  {
+    "id": "delete_directory_recursive_windows_powershell",
+    "task": "delete_directory_recursive",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "dangerous",
+    "command": "Remove-Item -Path .\\temp -Recurse -Force",
+    "example": "Remove-Item -Path C:\\tmp\\build -Recurse -Force",
+    "description": {
+      "de": "Loescht einen Ordner rekursiv und ohne Rueckfrage.",
+      "en": "Deletes a directory recursively without prompt."
+    },
+    "keywords": {
+      "de": ["ordner loeschen", "rekursiv loeschen", "remove-item", "danger"],
+      "en": ["delete directory", "remove folder", "recursive delete", "dangerous"]
+    }
+  },
+  {
+    "id": "delete_directory_recursive_linux_bash",
+    "task": "delete_directory_recursive",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "dangerous",
+    "command": "rm -rf ./temp",
+    "example": "rm -rf /tmp/build-cache",
+    "description": {
+      "de": "Entfernt ein Verzeichnis mit allen Inhalten.",
+      "en": "Removes a directory with all contents."
+    },
+    "keywords": {
+      "de": ["rm -rf", "ordner entfernen", "loeschen", "vorsicht"],
+      "en": ["rm -rf", "delete folder", "remove directory", "careful"]
+    }
+  },
+  {
+    "id": "delete_directory_recursive_macos_zsh",
+    "task": "delete_directory_recursive",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "dangerous",
+    "command": "rm -rf ./temp",
+    "example": "rm -rf ~/Library/Caches/my-app",
+    "description": {
+      "de": "Loescht ein Verzeichnis auf macOS rekursiv.",
+      "en": "Recursively deletes a directory on macOS."
+    },
+    "keywords": {
+      "de": ["ordner rekursiv loeschen", "rm", "macos", "dangerous"],
+      "en": ["delete recursive", "rm -rf", "macos", "remove folder"]
+    }
+  },
+
+  {
+    "id": "create_directory_nested_windows_powershell",
+    "task": "create_directory_nested",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "safe",
+    "command": "New-Item -ItemType Directory -Path .\\logs\\2026\\03 -Force",
+    "example": "New-Item -ItemType Directory -Path C:\\data\\exports\\daily -Force",
+    "description": {
+      "de": "Erstellt einen verschachtelten Ordnerpfad.",
+      "en": "Creates a nested directory path."
+    },
+    "keywords": {
+      "de": ["ordner erstellen", "verzeichnis anlegen", "new-item", "nested"],
+      "en": ["create directory", "mkdir nested", "new-item", "folder"]
+    }
+  },
+  {
+    "id": "create_directory_nested_linux_bash",
+    "task": "create_directory_nested",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "safe",
+    "command": "mkdir -p ./logs/2026/03",
+    "example": "mkdir -p /var/backups/daily",
+    "description": {
+      "de": "Erstellt Verzeichnisse inklusive fehlender Elternordner.",
+      "en": "Creates directories including missing parent folders."
+    },
+    "keywords": {
+      "de": ["mkdir -p", "ordner erstellen", "verschachtelt", "verzeichnis"],
+      "en": ["mkdir -p", "create nested folders", "directory", "parents"]
+    }
+  },
+  {
+    "id": "create_directory_nested_macos_zsh",
+    "task": "create_directory_nested",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "safe",
+    "command": "mkdir -p ./logs/2026/03",
+    "example": "mkdir -p ~/Projects/cmdfind/tmp/cache",
+    "description": {
+      "de": "Legt mehrere Ordnerstufen auf einmal an.",
+      "en": "Creates multiple directory levels at once."
+    },
+    "keywords": {
+      "de": ["ordnerstruktur erstellen", "mkdir", "macos", "mehrere ordner"],
+      "en": ["make directories", "mkdir -p", "macos", "nested"]
+    }
+  },
+
+  {
+    "id": "extract_zip_archive_windows_powershell",
+    "task": "extract_zip_archive",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "safe",
+    "command": "Expand-Archive -Path .\\archive.zip -DestinationPath .\\out -Force",
+    "example": "Expand-Archive -Path C:\\downloads\\backup.zip -DestinationPath C:\\restore -Force",
+    "description": {
+      "de": "Entpackt ein ZIP-Archiv in ein Zielverzeichnis.",
+      "en": "Extracts a ZIP archive into a destination folder."
+    },
+    "keywords": {
+      "de": ["zip entpacken", "expand-archive", "archiv", "entzippen"],
+      "en": ["extract zip", "unzip", "expand-archive", "archive"]
+    }
+  },
+  {
+    "id": "extract_zip_archive_linux_bash",
+    "task": "extract_zip_archive",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "safe",
+    "command": "unzip archive.zip -d out",
+    "example": "unzip backup.zip -d ./restore",
+    "description": {
+      "de": "Entpackt ein ZIP-Archiv mit unzip.",
+      "en": "Extracts a ZIP archive using unzip."
+    },
+    "keywords": {
+      "de": ["zip entpacken", "unzip", "archiv auspacken", "linux"],
+      "en": ["unzip file", "extract archive", "zip", "linux"]
+    }
+  },
+  {
+    "id": "extract_zip_archive_macos_zsh",
+    "task": "extract_zip_archive",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "safe",
+    "command": "unzip archive.zip -d out",
+    "example": "unzip ~/Downloads/data.zip -d ~/Desktop/data",
+    "description": {
+      "de": "Entpackt ZIP-Dateien auf macOS.",
+      "en": "Extracts ZIP files on macOS."
+    },
+    "keywords": {
+      "de": ["zip datei entpacken", "unzip", "mac", "archiv"],
+      "en": ["extract zip", "unzip", "macos", "archive"]
+    }
+  },
+
+  {
+    "id": "create_zip_archive_windows_powershell",
+    "task": "create_zip_archive",
+    "platform": "windows",
+    "shell": "powershell",
+    "warning": "safe",
+    "command": "Compress-Archive -Path .\\folder\\* -DestinationPath .\\archive.zip -Force",
+    "example": "Compress-Archive -Path C:\\logs\\* -DestinationPath C:\\backup\\logs.zip -Force",
+    "description": {
+      "de": "Packt Dateien oder Ordner in ein ZIP-Archiv.",
+      "en": "Creates a ZIP archive from files or folders."
+    },
+    "keywords": {
+      "de": ["zip erstellen", "komprimieren", "compress-archive", "archivieren"],
+      "en": ["create zip", "compress", "zip folder", "archive"]
+    }
+  },
+  {
+    "id": "create_zip_archive_linux_bash",
+    "task": "create_zip_archive",
+    "platform": "linux",
+    "shell": "bash",
+    "warning": "safe",
+    "command": "zip -r archive.zip folder",
+    "example": "zip -r logs.zip ./logs",
+    "description": {
+      "de": "Erstellt rekursiv ein ZIP-Archiv.",
+      "en": "Creates a ZIP archive recursively."
+    },
+    "keywords": {
+      "de": ["zip erstellen", "ordner zippen", "komprimieren", "zip -r"],
+      "en": ["zip -r", "create archive", "compress folder", "zip"]
+    }
+  },
+  {
+    "id": "create_zip_archive_macos_zsh",
+    "task": "create_zip_archive",
+    "platform": "macos",
+    "shell": "zsh",
+    "warning": "safe",
+    "command": "zip -r archive.zip folder",
+    "example": "zip -r project.zip ~/Projects/my-app",
+    "description": {
+      "de": "Packt einen Ordner als ZIP auf macOS.",
+      "en": "Packs a folder as ZIP on macOS."
+    },
+    "keywords": {
+      "de": ["ordner zip", "zip erstellen", "macos", "komprimieren"],
+      "en": ["zip folder", "create zip", "macos", "archive"]
+    }
+  }
+]

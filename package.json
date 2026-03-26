@@ -1,0 +1,26 @@
+{
+  "name": "cmdfind",
+  "version": "0.1.0",
+  "description": "Find terminal commands from natural language (DE/EN) for Windows, Linux and macOS",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "cmdfind": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && mkdir -p dist/data && cp src/data/commands.json dist/data/commands.json && cp src/data/it-commands.json dist/data/it-commands.json",
+    "dev": "tsx src/cli/index.ts",
+    "start": "node dist/cli/index.js",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}
