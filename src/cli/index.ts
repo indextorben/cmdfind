@@ -153,10 +153,6 @@ function parseArgs(argv: string[]): CliArgs {
     printHelp();
     process.exit(1);
   }
-  if (!parsedTrigger.triggered) {
-    console.error("Bitte starte die Anfrage mit '#', z. B. cmdfind \"#ping\".");
-    process.exit(1);
-  }
 
   const options: SearchOptions = {
     platform,
