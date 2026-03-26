@@ -131,6 +131,7 @@ Hinweise:
 - `--platform` und `--shell` bleiben echte Filter.
 - Mit `--json` wird auch der genutzte Index-Pfad ausgegeben.
 - Jede Anfrage muss mit `#` beginnen (z. B. `#ping`), damit cmdfind die Suche ausfuehrt.
+- Wichtig in Bash/Zsh: `#` startet sonst einen Kommentar. Deshalb Query immer in Quotes oder escaped schreiben, z. B. `cmdfind "#ping"` oder `cmdfind \\#ping`.
 - Optional kannst du das Trigger-Zeichen ueber `CMDFIND_TRIGGER_CHARS` aendern, z. B. `CMDFIND_TRIGGER_CHARS=\"@\"`.
 
 ## Abgedeckte IT/Admin-Seed-Commands (Auszug)

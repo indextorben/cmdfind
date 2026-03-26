@@ -55,9 +55,15 @@ function requireValue(flag: string, value: string | undefined): string {
 }
 
 function parseArgs(argv: string[]): CliArgs {
-  if (argv.length === 0 || argv.includes("-h") || argv.includes("--help")) {
+  if (argv.includes("-h") || argv.includes("--help")) {
     printHelp();
     process.exit(0);
+  }
+
+  if (argv.length === 0) {
+    console.error("Keine Anfrage erkannt. Hinweis: '#...' muss in Quotes stehen, z. B. cmdfind \"#ping\".");
+    printHelp();
+    process.exit(1);
   }
 
   let platform: Platform | undefined;
