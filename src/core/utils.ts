@@ -75,7 +75,7 @@ export function parseTriggerQuery(rawQuery: string): { query: string; triggered:
     return { query: trimmed, triggered: false };
   }
 
-  const triggers = (process.env.CMDFIND_TRIGGER_CHARS || "?,!,/")
+  const triggers = (process.env.CMDFIND_TRIGGER_CHARS || "#")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);

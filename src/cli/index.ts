@@ -38,10 +38,10 @@ Options:
   -h, --help                         Show this help
 
 Examples:
-  cmdfind "?ping"
-  cmdfind "grosse dateien finden"
-  cmdfind "find large files" --platform linux --shell bash
-  cmdfind "Prozess auf Port 3000 beenden" --platform windows --shell powershell
+  cmdfind "#ping"
+  cmdfind "#grosse dateien finden"
+  cmdfind "#find large files" --platform linux --shell bash
+  cmdfind "#Prozess auf Port 3000 beenden" --platform windows --shell powershell
 `);
 }
 
@@ -145,6 +145,10 @@ function parseArgs(argv: string[]): CliArgs {
   const parsedTrigger = parseTriggerQuery(query);
   if (!parsedTrigger.query) {
     printHelp();
+    process.exit(1);
+  }
+  if (!parsedTrigger.triggered) {
+    console.error("Bitte starte die Anfrage mit '#', z. B. cmdfind \"#ping\".");
     process.exit(1);
   }
 

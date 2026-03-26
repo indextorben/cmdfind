@@ -88,28 +88,28 @@ git remote set-url origin https://github.com/indextorben/cmdfind.git
 Development:
 
 ```bash
-npm run dev -- "grosse dateien finden"
+npm run dev -- "#grosse dateien finden"
 ```
 
 Produktion:
 
 ```bash
-npm run start -- "find large files"
+npm run start -- "#find large files"
 ```
 
 ## Beispiele
 
 ```bash
-cmdfind "?ping"
-cmdfind "!kill process on port 3000"
-cmdfind "Prozess auf Port 3000 beenden"
-cmdfind "find network ports"
-cmdfind "dns lookup" --platform windows --shell powershell
-cmdfind "list services" --lang en
-cmdfind "show local commands" --json
-cmdfind "ping host" --refresh-index
-cmdfind "find text" --no-local-index
-cmdfind "kill process" --all
+cmdfind "#ping"
+cmdfind "#kill process on port 3000"
+cmdfind "#Prozess auf Port 3000 beenden"
+cmdfind "#find network ports"
+cmdfind "#dns lookup" --platform windows --shell powershell
+cmdfind "#list services" --lang en
+cmdfind "#show local commands" --json
+cmdfind "#ping host" --refresh-index
+cmdfind "#find text" --no-local-index
+cmdfind "#kill process" --all
 ```
 
 ## CLI-Optionen
@@ -130,8 +130,8 @@ Hinweise:
 - Ohne `--all` wird der aktuelle Laufzeitkontext erkannt und im Ranking bevorzugt.
 - `--platform` und `--shell` bleiben echte Filter.
 - Mit `--json` wird auch der genutzte Index-Pfad ausgegeben.
-- Mit Trigger-Praefix (`?`, `!`, `/`) wird die Anfrage explizit als Command-Suche behandelt und Name/Command-Matches werden staerker gewichtet.
-- Trigger lassen sich ueber `CMDFIND_TRIGGER_CHARS` anpassen, z. B. `CMDFIND_TRIGGER_CHARS=\"@,#\"`.
+- Jede Anfrage muss mit `#` beginnen (z. B. `#ping`), damit cmdfind die Suche ausfuehrt.
+- Optional kannst du das Trigger-Zeichen ueber `CMDFIND_TRIGGER_CHARS` aendern, z. B. `CMDFIND_TRIGGER_CHARS=\"@\"`.
 
 ## Abgedeckte IT/Admin-Seed-Commands (Auszug)
 
