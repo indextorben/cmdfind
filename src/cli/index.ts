@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { loadCommands, mergeLocalAvailability } from "../core/database.js";
+import { printBanner } from "../core/banner.js";
 import { formatResults } from "../core/formatter.js";
 import { discoverAndIndexLocalCommands, getIndexLocation } from "../core/local-index.js";
 import { searchCommands } from "../core/search.js";
@@ -15,6 +16,7 @@ interface CliArgs {
   query: string;
   options: SearchOptions;
   json: boolean;
+  noBanner: boolean;
   useCurrentContext: boolean;
   refreshIndex: boolean;
   disableLocalIndex: boolean;
@@ -32,6 +34,7 @@ Options:
   --lang <de|en>                     Force language
   --limit <number>                   Limit number of results (default: 5)
   --json                             Output as JSON
+  --no-banner                        Disable startup banner
   --refresh-index                    Force rebuild of local command index
   --no-local-index                   Disable local command discovery/index integration
   --all                              Disable auto context preference (os/shell/local/admin)
@@ -71,6 +74,7 @@ function parseArgs(argv: string[]): CliArgs {
   let language: Language | undefined;
   let limit: number | undefined;
   let json = false;
+  let noBanner = process.env.CMDFIND_NO_BANNER === "1";
   let useCurrentContext = true;
   let refreshIndex = false;
   let disableLocalIndex = false;
@@ -129,6 +133,11 @@ function parseArgs(argv: string[]): CliArgs {
       continue;
     }
 
+    if (arg === "--no-banner") {
+      noBanner = true;
+      continue;
+    }
+
     if (arg === "--refresh-index") {
       refreshIndex = true;
       continue;
@@ -166,6 +175,7 @@ function parseArgs(argv: string[]): CliArgs {
     query: parsedTrigger.query,
     options,
     json,
+    noBanner,
     useCurrentContext,
     refreshIndex,
     disableLocalIndex
@@ -193,6 +203,10 @@ function normalizeOptionsFromContext(parsed: CliArgs): CliArgs {
 
 function main(): void {
   const parsed = normalizeOptionsFromContext(parseArgs(process.argv.slice(2)));
+  if (!parsed.json && !parsed.noBanner) {
+    printBanner();
+  }
+
   let entries = loadCommands();
   const runtimePlatform = parsed.options.currentPlatform ?? detectPlatform();
   const runtimeShell = parsed.options.currentShell ?? detectShell();

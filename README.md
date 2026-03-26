@@ -120,6 +120,7 @@ cmdfind kill process --all
 --lang <de|en>
 --limit <number>
 --json
+--no-banner                        Startup-Banner deaktivieren
 --refresh-index                    Lokalen Command-Index neu erstellen
 --no-local-index                   Lokale Discovery/Index deaktivieren
 --all                              Kontext-Priorisierung deaktivieren
@@ -133,6 +134,7 @@ Hinweise:
 - Anfrage einfach direkt ohne Prefix eingeben, z. B. `cmdfind ping` oder `cmdfind find network ports`.
 - Optionaler Trigger-Prefix ist weiter moeglich, aber nicht noetig.
 - Optional kannst du das Trigger-Zeichen ueber `CMDFIND_TRIGGER_CHARS` aendern, z. B. `CMDFIND_TRIGGER_CHARS=\"@\"`.
+- Beim Start wird ein farbiges `cmdfind`-Banner angezeigt. Deaktivieren mit `--no-banner` oder `CMDFIND_NO_BANNER=1`.
 
 ## Abgedeckte IT/Admin-Seed-Commands (Auszug)
 
