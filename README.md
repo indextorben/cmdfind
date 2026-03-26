@@ -89,6 +89,7 @@ Development:
 
 ```bash
 npm run dev -- grosse dateien finden
+npm run dev -- ping --lang de
 ```
 
 Produktion:
@@ -101,6 +102,7 @@ npm run start -- find large files
 
 ```bash
 cmdfind ping
+cmdfind ping --lang de
 cmdfind kill process on port 3000
 cmdfind Prozess auf Port 3000 beenden
 cmdfind find network ports
@@ -110,6 +112,8 @@ cmdfind show local commands --json
 cmdfind ping host --refresh-index
 cmdfind find text --no-local-index
 cmdfind kill process --all
+cmdfind --set-default-lang de
+cmdfind --set-default-lang en
 ```
 
 ## CLI-Optionen
@@ -118,6 +122,7 @@ cmdfind kill process --all
 --platform <windows|linux|macos>   Expliziter Filter
 --shell <powershell|bash|zsh>      Expliziter Filter
 --lang <de|en>
+--set-default-lang <de|en>         Standardsprache dauerhaft speichern
 --limit <number>
 --json
 --no-banner                        Startup-Banner deaktivieren
@@ -135,6 +140,9 @@ Hinweise:
 - Optionaler Trigger-Prefix ist weiter moeglich, aber nicht noetig.
 - Optional kannst du das Trigger-Zeichen ueber `CMDFIND_TRIGGER_CHARS` aendern, z. B. `CMDFIND_TRIGGER_CHARS=\"@\"`.
 - Beim Start wird ein farbiges `cmdfind`-Banner angezeigt. Deaktivieren mit `--no-banner` oder `CMDFIND_NO_BANNER=1`.
+- Sprachumschaltung:
+  - einmalig pro Anfrage mit `--lang de|en`
+  - dauerhaft fuer spaetere Aufrufe mit `--set-default-lang de|en`
 
 ## Abgedeckte IT/Admin-Seed-Commands (Auszug)
 

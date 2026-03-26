@@ -2,6 +2,7 @@
 
 import { loadCommands, mergeLocalAvailability } from "../core/database.js";
 import { printBanner } from "../core/banner.js";
+import { getConfigPath, loadConfig, saveConfig } from "../core/config.js";
 import { formatResults } from "../core/formatter.js";
 import { discoverAndIndexLocalCommands, getIndexLocation } from "../core/local-index.js";
 import { searchCommands } from "../core/search.js";
@@ -15,6 +16,7 @@ const VALID_LANGUAGES: Language[] = ["de", "en"];
 interface CliArgs {
   query: string;
   options: SearchOptions;
+  setDefaultLanguage?: Language;
   json: boolean;
   noBanner: boolean;
   useCurrentContext: boolean;
@@ -32,6 +34,7 @@ Options:
   --platform <windows|linux|macos>   Filter by platform
   --shell <powershell|bash|zsh>      Filter by shell
   --lang <de|en>                     Force language
+  --set-default-lang <de|en>         Persist default language for future runs
   --limit <number>                   Limit number of results (default: 5)
   --json                             Output as JSON
   --no-banner                        Disable startup banner
@@ -42,6 +45,7 @@ Options:
 
 Examples:
   cmdfind ping
+  cmdfind --set-default-lang de
   cmdfind grosse dateien finden
   cmdfind find large files --platform linux --shell bash
   cmdfind Prozess auf Port 3000 beenden --platform windows --shell powershell
@@ -78,6 +82,7 @@ function parseArgs(argv: string[]): CliArgs {
   let useCurrentContext = true;
   let refreshIndex = false;
   let disableLocalIndex = false;
+  let setDefaultLanguage: Language | undefined;
 
   const queryParts: string[] = [];
 
@@ -113,6 +118,17 @@ function parseArgs(argv: string[]): CliArgs {
         process.exit(1);
       }
       language = value as Language;
+      i += 1;
+      continue;
+    }
+
+    if (arg === "--set-default-lang") {
+      const value = requireValue("--set-default-lang", argv[i + 1]);
+      if (!VALID_LANGUAGES.includes(value as Language)) {
+        console.error(`Invalid language: ${value}. Use de|en.`);
+        process.exit(1);
+      }
+      setDefaultLanguage = value as Language;
       i += 1;
       continue;
     }
@@ -158,7 +174,7 @@ function parseArgs(argv: string[]): CliArgs {
 
   const query = queryParts.join(" ").trim();
   const parsedTrigger = parseTriggerQuery(query);
-  if (!parsedTrigger.query) {
+  if (!parsedTrigger.query && !setDefaultLanguage) {
     printHelp();
     process.exit(1);
   }
@@ -174,6 +190,7 @@ function parseArgs(argv: string[]): CliArgs {
   return {
     query: parsedTrigger.query,
     options,
+    setDefaultLanguage,
     json,
     noBanner,
     useCurrentContext,
@@ -194,7 +211,6 @@ function normalizeOptionsFromContext(parsed: CliArgs): CliArgs {
       platform: parsed.options.platform ?? detectPlatform(),
       currentPlatform: detectPlatform(),
       currentShell: detectShell(),
-      language: parsed.options.language ?? inferLanguage(parsed.query),
       preferLocal: true,
       preferAdmin: true
     }
@@ -202,7 +218,24 @@ function normalizeOptionsFromContext(parsed: CliArgs): CliArgs {
 }
 
 function main(): void {
+  const config = loadConfig();
   const parsed = normalizeOptionsFromContext(parseArgs(process.argv.slice(2)));
+
+  if (parsed.setDefaultLanguage) {
+    saveConfig({
+      ...config,
+      defaultLanguage: parsed.setDefaultLanguage
+    });
+    const message =
+      parsed.setDefaultLanguage === "de"
+        ? `Standardsprache gesetzt auf Deutsch. (Config: ${getConfigPath()})`
+        : `Default language set to English. (Config: ${getConfigPath()})`;
+    console.log(message);
+    return;
+  }
+
+  parsed.options.language = parsed.options.language ?? config.defaultLanguage ?? inferLanguage(parsed.query);
+
   if (!parsed.json && !parsed.noBanner) {
     printBanner();
   }
