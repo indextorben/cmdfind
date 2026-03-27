@@ -80,7 +80,10 @@ function render(response: DesktopSearchResponse): void {
       return `
       <article class="card">
         <div class="head"><span class="idx">${index + 1}</span> ${escapeHtml(result.entry.task.replaceAll("_", " "))}</div>
-        <div class="command">${escapeHtml(result.entry.command)}</div>
+        <div class="command-row">
+          <div class="command">${escapeHtml(result.entry.command)}</div>
+          <button class="copy-btn" data-cmd="${escapeHtml(result.entry.command)}">Copy</button>
+        </div>
         <div class="note">${escapeHtml(note)}</div>
         <div class="meta">Example: ${escapeHtml(result.entry.example)}</div>
         <div class="meta">${escapeHtml(result.entry.platform)} | ${escapeHtml(result.entry.shell)} | ${escapeHtml(
@@ -91,6 +94,15 @@ function render(response: DesktopSearchResponse): void {
       </article>`;
     })
     .join("");
+}
+
+async function copyCommand(command: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(command);
+    statusEl.textContent = `Copied: ${command}`;
+  } catch {
+    statusEl.textContent = "Copy failed.";
+  }
 }
 
 async function runSearch(forceAll = false): Promise<void> {
@@ -147,6 +159,18 @@ saveLangBtn.addEventListener("click", async () => {
   }
   await window.cmdfindDesktop.setDefaultLanguage(selected);
   statusEl.textContent = `Saved default language: ${selected}`;
+});
+
+resultsEl.addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  if (!target.classList.contains("copy-btn")) {
+    return;
+  }
+  const cmd = target.getAttribute("data-cmd");
+  if (!cmd) {
+    return;
+  }
+  void copyCommand(cmd);
 });
 
 void window.cmdfindDesktop.getDefaultLanguage().then((lang) => {
