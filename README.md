@@ -102,6 +102,7 @@ npm run start -- find large files
 
 ```bash
 cmdfind ping
+cmdfind all --all
 cmdfind ping --lang de
 cmdfind kill process on port 3000
 cmdfind Prozess auf Port 3000 beenden
@@ -147,6 +148,9 @@ Hinweise:
   - wird automatisch mit Cache-TTL aktualisiert (Standard: 3600 Sekunden)
   - manuell neu aufbauen mit `--refresh-index`
   - TTL ueber `CMDFIND_INDEX_TTL_SECONDS` konfigurierbar
+- Alle lokal vorhandenen Befehle listen:
+  - `cmdfind all --all`
+  - optional mit Limit: `cmdfind all --all --limit 200`
 
 ## Abgedeckte IT/Admin-Seed-Commands (Auszug)
 

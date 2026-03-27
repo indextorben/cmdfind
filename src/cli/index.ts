@@ -6,7 +6,7 @@ import { getConfigPath, loadConfig, saveConfig } from "../core/config.js";
 import { formatResults } from "../core/formatter.js";
 import { discoverAndIndexLocalCommands, discoverCommandByName, getIndexLocation } from "../core/local-index.js";
 import { searchCommands } from "../core/search.js";
-import type { Language, Platform, SearchOptions, Shell } from "../core/types.js";
+import type { Language, Platform, SearchOptions, SearchResult, Shell } from "../core/types.js";
 import { detectPlatform, detectShell, inferLanguage, parseTriggerQuery } from "../core/utils.js";
 
 const VALID_PLATFORMS: Platform[] = ["windows", "linux", "macos"];
@@ -45,6 +45,7 @@ Options:
 
 Examples:
   cmdfind ping
+  cmdfind all --all
   cmdfind --set-default-lang de
   cmdfind grosse dateien finden
   cmdfind find large files --platform linux --shell bash
@@ -262,7 +263,22 @@ function main(): void {
     entries = mergeLocalAvailability(entries, localRecords, runtimePlatform, runtimeShell);
   }
 
-  const results = searchCommands(entries, parsed.query, parsed.options);
+  const normalizedQuery = parsed.query.trim().toLowerCase();
+  const isAllListing = !parsed.useCurrentContext && (normalizedQuery === "all" || normalizedQuery === "*");
+
+  const results: SearchResult[] = isAllListing
+    ? entries
+        .filter((entry) => entry.locallyAvailable)
+        .filter((entry) => (parsed.options.platform ? entry.platform === parsed.options.platform : true))
+        .filter((entry) => (parsed.options.shell ? entry.shell === parsed.options.shell : true))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .slice(0, parsed.options.limit ?? Number.MAX_SAFE_INTEGER)
+        .map((entry) => ({
+          entry,
+          score: 0,
+          matchedTerms: []
+        }))
+    : searchCommands(entries, parsed.query, parsed.options);
   const language = parsed.options.language ?? inferLanguage(parsed.query);
 
   if (parsed.json) {
