@@ -137,7 +137,7 @@ function createWindow(): void {
     backgroundColor: "#0a0f1a",
     title: "cmdfind",
     webPreferences: {
-      preload: path.join(__dirname, "preload.js")
+      preload: path.join(__dirname, "preload.cjs")
     }
   });
 
