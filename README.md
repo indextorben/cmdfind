@@ -143,6 +143,10 @@ Hinweise:
 - Sprachumschaltung:
   - einmalig pro Anfrage mit `--lang de|en`
   - dauerhaft fuer spaetere Aufrufe mit `--set-default-lang de|en`
+- Lokaler Command-Index:
+  - wird automatisch mit Cache-TTL aktualisiert (Standard: 3600 Sekunden)
+  - manuell neu aufbauen mit `--refresh-index`
+  - TTL ueber `CMDFIND_INDEX_TTL_SECONDS` konfigurierbar
 
 ## Abgedeckte IT/Admin-Seed-Commands (Auszug)
 

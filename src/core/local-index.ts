@@ -115,6 +115,15 @@ function runLines(command: string): string[] {
   }
 }
 
+function getCacheTtlMs(): number {
+  const raw = process.env.CMDFIND_INDEX_TTL_SECONDS;
+  const ttlSeconds = raw ? Number(raw) : 3600;
+  if (!Number.isFinite(ttlSeconds) || ttlSeconds < 0) {
+    return 3600 * 1000;
+  }
+  return ttlSeconds * 1000;
+}
+
 function getIndexFilePath(): string {
   const customDir = process.env.CMDFIND_INDEX_DIR;
   const baseDir = customDir || path.join(process.cwd(), ".cmdfind");
@@ -135,6 +144,19 @@ function readCachedIndex(): LocalIndexFile | null {
   } catch {
     return null;
   }
+}
+
+function isCacheFresh(cache: LocalIndexFile, options: DiscoverOptions): boolean {
+  if (cache.platform !== options.platform || cache.shell !== options.shell) {
+    return false;
+  }
+
+  const generatedAt = new Date(cache.generatedAt).getTime();
+  if (!Number.isFinite(generatedAt)) {
+    return false;
+  }
+
+  return Date.now() - generatedAt <= getCacheTtlMs();
 }
 
 function writeCachedIndex(index: LocalIndexFile): void {
@@ -350,12 +372,7 @@ function dedupe(records: LocalCommandRecord[]): LocalCommandRecord[] {
 
 export function discoverAndIndexLocalCommands(options: DiscoverOptions): LocalCommandRecord[] {
   const cache = readCachedIndex();
-  if (
-    !options.forceRefresh &&
-    cache &&
-    cache.platform === options.platform &&
-    cache.shell === options.shell
-  ) {
+  if (!options.forceRefresh && cache && isCacheFresh(cache, options)) {
     return cache.commands;
   }
 
@@ -384,6 +401,29 @@ export function discoverAndIndexLocalCommands(options: DiscoverOptions): LocalCo
   });
 
   return deduped;
+}
+
+export function discoverCommandByName(
+  name: string,
+  platform: Platform,
+  shell: Shell
+): LocalCommandRecord | null {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized || /\s/.test(normalized) || !/^[a-z0-9._+-]+$/.test(normalized)) {
+    return null;
+  }
+
+  const lookupCmd =
+    platform === "windows"
+      ? `powershell -NoProfile -Command \"Get-Command ${normalized} -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Name\"`
+      : `command -v ${normalized} >/dev/null 2>&1 && echo ${normalized}`;
+
+  const lines = runLines(lookupCmd);
+  if (lines.length === 0) {
+    return null;
+  }
+
+  return createRecord(normalized, platform === "windows" ? "powershell" : "external", platform, shell);
 }
 
 export function getRuntimeContextDefaults(): { platform: Platform; shell: Shell } {

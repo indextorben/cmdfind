@@ -4,7 +4,7 @@ import { loadCommands, mergeLocalAvailability } from "../core/database.js";
 import { printBanner } from "../core/banner.js";
 import { getConfigPath, loadConfig, saveConfig } from "../core/config.js";
 import { formatResults } from "../core/formatter.js";
-import { discoverAndIndexLocalCommands, getIndexLocation } from "../core/local-index.js";
+import { discoverAndIndexLocalCommands, discoverCommandByName, getIndexLocation } from "../core/local-index.js";
 import { searchCommands } from "../core/search.js";
 import type { Language, Platform, SearchOptions, Shell } from "../core/types.js";
 import { detectPlatform, detectShell, inferLanguage, parseTriggerQuery } from "../core/utils.js";
@@ -250,6 +250,15 @@ function main(): void {
       shell: runtimeShell,
       forceRefresh: parsed.refreshIndex
     });
+
+    const singleToken = parsed.query.trim().split(/\s+/);
+    if (singleToken.length === 1) {
+      const onDemand = discoverCommandByName(singleToken[0], runtimePlatform, runtimeShell);
+      if (onDemand && !localRecords.some((record) => record.name.toLowerCase() === onDemand.name.toLowerCase())) {
+        localRecords.push(onDemand);
+      }
+    }
+
     entries = mergeLocalAvailability(entries, localRecords, runtimePlatform, runtimeShell);
   }
 
