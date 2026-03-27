@@ -104,9 +104,27 @@ Desktop-App (native GUI, Windows/Linux/macOS):
 npm run desktop
 ```
 
+Desktop-Pakete bauen (lokal):
+
+```bash
+npm run desktop:package
+```
+
 Hinweis:
 - Die Desktop-App nutzt dieselbe Such-Engine wie die CLI.
 - In der GUI kannst du Sprache, Plattform, Shell, Limit und Index-Optionen setzen.
+
+## Automatische Paket-Updates
+
+Bei jedem Push auf `main` baut GitHub Actions automatisch neue Desktop-Pakete fuer:
+- Windows
+- macOS
+- Linux
+
+Workflow-Datei:
+- `.github/workflows/continuous-packages.yml`
+
+Die Artefakte werden als laufend aktualisiertes Pre-Release mit dem Tag `continuous` veroeffentlicht.
 
 ## Beispiele
 

@@ -1,0 +1,80 @@
+name: Continuous Desktop Packages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-packages:
+    name: Build ${{ matrix.target }} package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            artifact_name: cmdfind-linux
+          - os: windows-latest
+            target: win
+            artifact_name: cmdfind-windows
+          - os: macos-latest
+            target: mac
+            artifact_name: cmdfind-macos
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      - name: Package desktop app
+        run: npx electron-builder --publish never --${{ matrix.target }} --config.directories.output=release/${{ matrix.target }}
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: release/${{ matrix.target }}/**/*
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish continuous release
+    runs-on: ubuntu-latest
+    needs: build-packages
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cmdfind-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Publish GitHub Release (continuous)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: continuous
+          name: cmdfind Continuous Desktop Build
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          overwrite_files: true
+          files: release-assets/**/*
+          body: |
+            Auto-generated desktop packages from commit `${{ github.sha }}`.
+            Updated on every push to `main`.
