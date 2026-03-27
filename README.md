@@ -98,6 +98,16 @@ Produktion:
 npm run start -- find large files
 ```
 
+Desktop-App (native GUI, Windows/Linux/macOS):
+
+```bash
+npm run desktop
+```
+
+Hinweis:
+- Die Desktop-App nutzt dieselbe Such-Engine wie die CLI.
+- In der GUI kannst du Sprache, Plattform, Shell, Limit und Index-Optionen setzen.
+
 ## Beispiele
 
 ```bash
