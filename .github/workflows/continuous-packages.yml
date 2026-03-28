@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build-packages:
     name: Build ${{ matrix.target }} package
@@ -42,6 +45,9 @@ jobs:
 
       - name: Build app
         run: npm run build
+
+      - name: Rebuild native modules for Electron
+        run: npx electron-rebuild -f -w node-pty
 
       - name: Package desktop app
         run: npx electron-builder --publish never --${{ matrix.target }} --config.directories.output=release/${{ matrix.target }}
