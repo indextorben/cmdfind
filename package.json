@@ -9,7 +9,7 @@
     "cmdfind": "dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && mkdir -p dist/data dist/desktop && cp src/data/commands.json dist/data/commands.json && cp src/data/it-commands.json dist/data/it-commands.json && cp src/desktop/index.html dist/desktop/index.html",
+    "build": "tsc -p tsconfig.json && node scripts/postbuild.mjs",
     "dev": "tsx src/cli/index.ts",
     "start": "node dist/cli/index.js",
     "desktop": "npm run build && npx electron-rebuild -f -w node-pty && node -e \"const { spawn } = require('child_process'); const electron = require('electron'); const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE; const child = spawn(electron, ['dist/desktop/main.js'], { stdio: 'inherit', env }); child.on('exit', (code) => process.exit(code ?? 0));\"",
