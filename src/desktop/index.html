@@ -351,6 +351,13 @@
         background: rgba(10, 16, 31, 0.82);
       }
 
+      .terminal-inline-hint {
+        padding: 6px 14px 0;
+        font-size: 12px;
+        color: #95a7cb;
+        min-height: 18px;
+      }
+
       #terminalInput::selection {
         background: rgba(160, 176, 206, 0.38);
         color: #edf4ff;
@@ -366,7 +373,7 @@
         border-radius: 10px;
         background: rgba(11, 17, 33, 0.96);
         overflow: hidden;
-        max-height: 210px;
+        max-height: 220px;
         overflow-y: auto;
         z-index: 5;
         box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
@@ -385,6 +392,8 @@
         background: rgba(100, 120, 160, 0.16);
         color: #d9e6ff;
         padding: 8px 10px;
+        min-height: 44px;
+        line-height: 1.2;
         font-size: 13px;
       }
 
@@ -783,6 +792,7 @@
         </div>
         <pre id="terminalOutput" class="terminal-output"></pre>
         <div id="terminalSuggest" class="terminal-suggest" hidden></div>
+        <div id="terminalInlineHint" class="terminal-inline-hint"></div>
         <form id="terminalForm" class="terminal-form">
           <input id="terminalInput" type="text" placeholder="Type command and press Enter..." autocomplete="off" />
           <button type="submit" id="terminalRun">Run</button>
