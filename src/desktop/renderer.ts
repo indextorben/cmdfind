@@ -87,6 +87,7 @@ const terminalRun = document.querySelector<HTMLButtonElement>("#terminalRun")!;
 const terminalClear = document.querySelector<HTMLButtonElement>("#terminalClear")!;
 const terminalStop = document.querySelector<HTMLButtonElement>("#terminalStop")!;
 const terminalSuggest = document.querySelector<HTMLDivElement>("#terminalSuggest")!;
+const terminalInlineHint = document.querySelector<HTMLDivElement>("#terminalInlineHint")!;
 
 type UiSettings = {
   theme: "midnight" | "slate" | "graphite" | "sunset" | "emerald" | "amber" | "cyber" | "rose";
@@ -109,6 +110,29 @@ let terminalSuggestionIndex = -1;
 let terminalSuggestTimer: number | undefined;
 let terminalInputHadFocus = false;
 let suppressInlineAutocompleteOnce = false;
+let pendingInlineSuggestion: string | null = null;
+let terminalSuggestionRequestId = 0;
+
+function renderInlineHint(): void {
+  if (!pendingInlineSuggestion) {
+    terminalInlineHint.textContent = "";
+    return;
+  }
+  terminalInlineHint.textContent = `Vorschlag: ${pendingInlineSuggestion}  |  Shift zum Übernehmen`;
+}
+
+function updateTerminalCurrentDirHintFromOutput(plainOutput: string): void {
+  const lines = plainOutput.split("\n");
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i]?.trim();
+    if (!line) continue;
+    const match = line.match(/^\S+\s+(.+?)\s+[%$#](?:\s.*)?$/);
+    if (match?.[1]) {
+      terminalCurrentDirHint = match[1].trim();
+      return;
+    }
+  }
+}
 let terminalCurrentDirHint = "~";
 
 const quickSettingsFields: HTMLElement[] = [
@@ -448,11 +472,7 @@ function appendTerminalOutput(chunk: string): void {
 
   terminalOutput.innerHTML = withMarkup;
   terminalOutput.scrollTop = terminalOutput.scrollHeight;
-
-  const promptMatch = plainOutput.match(/\n?[^\s]+\s+(.+?)\s+[%$#]\s[^\n]*$/);
-  if (promptMatch?.[1]) {
-    terminalCurrentDirHint = promptMatch[1].trim();
-  }
+  updateTerminalCurrentDirHintFromOutput(plainOutput);
 }
 
 function clearTerminalDisplay(): void {
@@ -473,6 +493,8 @@ function getTerminalSizeEstimate(): { cols: number; rows: number } {
 function closeTerminalSuggestions(): void {
   terminalSuggestions = [];
   terminalSuggestionIndex = -1;
+  pendingInlineSuggestion = null;
+  renderInlineHint();
   terminalSuggest.hidden = true;
   terminalSuggest.innerHTML = "";
 }
@@ -507,8 +529,8 @@ function renderTerminalSuggestions(): void {
   terminalSuggest.hidden = false;
 }
 
-async function updateTerminalSuggestions(prefixRaw: string, options?: { allowInline?: boolean }): Promise<void> {
-  const allowInline = options?.allowInline !== false;
+async function updateTerminalSuggestions(prefixRaw: string): Promise<void> {
+  const requestId = ++terminalSuggestionRequestId;
   const raw = prefixRaw;
   const prefix = raw.trim();
   const cdMatch = raw.match(/^cd(?:\s+(.+))?$/);
@@ -526,16 +548,22 @@ async function updateTerminalSuggestions(prefixRaw: string, options?: { allowInl
         limit: 12,
         onlyDirectories: false
       });
+      if (requestId !== terminalSuggestionRequestId) {
+        return;
+      }
       const cdSuggestions = dirEntries.map((entry) => `cd ${entry.value}`).sort((a, b) => a.localeCompare(b));
       const current = raw.trimEnd();
       const best = cdSuggestions[0];
 
-      // Warp-like behavior for `cd`: no list popup, only inline grey completion.
-      if (allowInline && best && best.toLowerCase().startsWith(current.toLowerCase()) && best.length > current.length) {
-        terminalInput.value = best;
-        terminalInput.setSelectionRange(current.length, best.length);
+      // Show real filesystem suggestions for cd and allow accept via Tab.
+      pendingInlineSuggestion = null;
+      if (best && best.toLowerCase().startsWith(current.toLowerCase()) && best.length > current.length) {
+        pendingInlineSuggestion = best;
       }
-      closeTerminalSuggestions();
+      renderInlineHint();
+      terminalSuggestions = cdSuggestions.slice(0, 8);
+      terminalSuggestionIndex = terminalSuggestions.length ? 0 : -1;
+      renderTerminalSuggestions();
       return;
     } catch {
       // fall through to regular command suggestions
@@ -558,6 +586,9 @@ async function updateTerminalSuggestions(prefixRaw: string, options?: { allowInl
       limit: 12,
       useCurrentContext: false
     });
+    if (requestId !== terminalSuggestionRequestId) {
+      return;
+    }
     searchMatches = Array.from(
       new Set(
         response.results
@@ -571,15 +602,17 @@ async function updateTerminalSuggestions(prefixRaw: string, options?: { allowInl
   }
 
   const combined = Array.from(new Set([...historyMatches, ...searchMatches])).slice(0, 8);
-  if (allowInline && combined.length === 1) {
+  if (requestId !== terminalSuggestionRequestId) {
+    return;
+  }
+  pendingInlineSuggestion = null;
+  if (combined.length === 1) {
     const only = combined[0]!;
     if (only.toLowerCase().startsWith(prefix.toLowerCase()) && only.length > prefix.length) {
-      terminalInput.value = only;
-      terminalInput.setSelectionRange(prefix.length, only.length);
-      closeTerminalSuggestions();
-      return;
+      pendingInlineSuggestion = only;
     }
   }
+  renderInlineHint();
 
   terminalSuggestions = combined;
   terminalSuggestionIndex = combined.length ? 0 : -1;
@@ -672,12 +705,6 @@ terminalForm.addEventListener("submit", async (event) => {
 });
 
 terminalInput.addEventListener("keydown", async (event) => {
-  if (event.key === "Shift") {
-    event.preventDefault();
-    terminalInput.focus();
-    return;
-  }
-
   if (event.key === "Backspace" && event.metaKey) {
     event.preventDefault();
     terminalInput.value = "";
@@ -693,8 +720,13 @@ terminalInput.addEventListener("keydown", async (event) => {
   }
 
   if (event.key === "Tab") {
-    if (!terminalSuggestions.length) return;
     event.preventDefault();
+    await updateTerminalSuggestions(terminalInput.value);
+    if (pendingInlineSuggestion) {
+      applyTerminalSuggestion(pendingInlineSuggestion);
+      return;
+    }
+    if (!terminalSuggestions.length) return;
     const chosen = terminalSuggestions[Math.max(0, terminalSuggestionIndex)];
     if (chosen) {
       applyTerminalSuggestion(chosen);
@@ -754,13 +786,22 @@ terminalInput.addEventListener("keydown", async (event) => {
 });
 
 terminalInput.addEventListener("input", () => {
+  const value = terminalInput.value;
+  if (/^cd(?:\s+.*)?$/i.test(value)) {
+    if (terminalSuggestTimer) {
+      window.clearTimeout(terminalSuggestTimer);
+    }
+    suppressInlineAutocompleteOnce = false;
+    void updateTerminalSuggestions(value);
+    return;
+  }
+
   if (terminalSuggestTimer) {
     window.clearTimeout(terminalSuggestTimer);
   }
   terminalSuggestTimer = window.setTimeout(() => {
-    const allowInline = !suppressInlineAutocompleteOnce;
     suppressInlineAutocompleteOnce = false;
-    void updateTerminalSuggestions(terminalInput.value, { allowInline });
+    void updateTerminalSuggestions(terminalInput.value);
   }, 120);
 });
 
