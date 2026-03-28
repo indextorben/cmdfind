@@ -56,6 +56,63 @@ const statusEl = document.querySelector<HTMLDivElement>("#status")!;
 const searchBtn = document.querySelector<HTMLButtonElement>("#searchBtn")!;
 const allBtn = document.querySelector<HTMLButtonElement>("#allBtn")!;
 const saveLangBtn = document.querySelector<HTMLButtonElement>("#saveLangBtn")!;
+const settingsToggle = document.querySelector<HTMLButtonElement>("#settingsToggle")!;
+const settingsPanel = document.querySelector<HTMLElement>("#settingsPanel")!;
+const settingsClose = document.querySelector<HTMLButtonElement>("#settingsClose")!;
+const themeSelect = document.querySelector<HTMLSelectElement>("#themeSelect")!;
+const accentColor = document.querySelector<HTMLInputElement>("#accentColor")!;
+const uiScale = document.querySelector<HTMLInputElement>("#uiScale")!;
+const radiusScale = document.querySelector<HTMLInputElement>("#radiusScale")!;
+
+type UiSettings = {
+  theme: "midnight" | "slate" | "graphite";
+  accent: string;
+  scale: number;
+  radius: number;
+};
+
+const uiSettingsKey = "cmdfind:desktop:ui-settings";
+
+function readUiSettings(): UiSettings {
+  try {
+    const raw = localStorage.getItem(uiSettingsKey);
+    if (!raw) {
+      return { theme: "midnight", accent: "#6ca5ff", scale: 100, radius: 14 };
+    }
+    const parsed = JSON.parse(raw) as Partial<UiSettings>;
+    return {
+      theme: parsed.theme === "slate" || parsed.theme === "graphite" ? parsed.theme : "midnight",
+      accent: typeof parsed.accent === "string" ? parsed.accent : "#6ca5ff",
+      scale: typeof parsed.scale === "number" ? parsed.scale : 100,
+      radius: typeof parsed.radius === "number" ? parsed.radius : 14
+    };
+  } catch {
+    return { theme: "midnight", accent: "#6ca5ff", scale: 100, radius: 14 };
+  }
+}
+
+function saveUiSettings(settings: UiSettings): void {
+  localStorage.setItem(uiSettingsKey, JSON.stringify(settings));
+}
+
+function applyUiSettings(settings: UiSettings): void {
+  document.body.dataset.theme = settings.theme;
+  if (settings.theme === "midnight") {
+    delete document.body.dataset.theme;
+  }
+
+  const root = document.documentElement;
+  root.style.setProperty("--primary", settings.accent);
+  root.style.setProperty("--line-strong", `${settings.accent}88`);
+  root.style.setProperty("--radius", `${settings.radius}px`);
+  root.style.setProperty("--radius-sm", `${Math.max(8, settings.radius - 4)}px`);
+  root.style.fontSize = `${settings.scale}%`;
+
+  themeSelect.value = settings.theme;
+  accentColor.value = settings.accent;
+  uiScale.value = String(settings.scale);
+  radiusScale.value = String(settings.radius);
+}
 
 function escapeHtml(text: string): string {
   return text
@@ -161,6 +218,47 @@ saveLangBtn.addEventListener("click", async () => {
   statusEl.textContent = `Saved default language: ${selected}`;
 });
 
+function setSettingsOpen(open: boolean): void {
+  settingsPanel.hidden = !open;
+}
+
+settingsToggle.addEventListener("click", () => {
+  setSettingsOpen(settingsPanel.hidden);
+});
+
+settingsClose.addEventListener("click", () => {
+  setSettingsOpen(false);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    setSettingsOpen(false);
+  }
+});
+
+document.addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  if (settingsPanel.hidden) return;
+  if (target.closest("#settingsPanel") || target.closest("#settingsToggle")) return;
+  setSettingsOpen(false);
+});
+
+function syncUiSettings(): void {
+  const settings: UiSettings = {
+    theme: themeSelect.value as UiSettings["theme"],
+    accent: accentColor.value,
+    scale: Number(uiScale.value),
+    radius: Number(radiusScale.value)
+  };
+  applyUiSettings(settings);
+  saveUiSettings(settings);
+}
+
+themeSelect.addEventListener("change", syncUiSettings);
+accentColor.addEventListener("input", syncUiSettings);
+uiScale.addEventListener("input", syncUiSettings);
+radiusScale.addEventListener("input", syncUiSettings);
+
 resultsEl.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   if (!target.classList.contains("copy-btn")) {
@@ -178,3 +276,5 @@ void window.cmdfindDesktop.getDefaultLanguage().then((lang) => {
     langSelect.value = lang;
   }
 });
+
+applyUiSettings(readUiSettings());

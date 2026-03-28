@@ -55,6 +55,13 @@
         padding: 22px;
       }
 
+      .hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
       .title {
         margin: 0 0 6px;
         font-size: 28px;
@@ -67,6 +74,23 @@
         margin: 0 0 18px;
         color: var(--muted);
         font-size: 14px;
+      }
+
+      .settings-toggle {
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(18, 28, 52, 0.86);
+        color: var(--text);
+      }
+
+      .settings-toggle svg {
+        width: 19px;
+        height: 19px;
       }
 
       .controls {
@@ -229,6 +253,96 @@
         color: var(--muted);
       }
 
+      .settings-panel {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        width: min(380px, calc(100vw - 30px));
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(13, 20, 38, 0.96);
+        backdrop-filter: blur(14px);
+        box-shadow: var(--shadow);
+        padding: 14px;
+        z-index: 30;
+      }
+
+      .settings-panel[hidden] {
+        display: none;
+      }
+
+      .settings-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+
+      .settings-title {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text);
+      }
+
+      .settings-close {
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        padding: 0;
+      }
+
+      .settings-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .setting {
+        display: grid;
+        gap: 6px;
+      }
+
+      .setting label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .setting input[type="range"] {
+        padding: 0;
+      }
+
+      .theme-preview {
+        display: flex;
+        gap: 6px;
+      }
+
+      .chip {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      body[data-theme="slate"] {
+        --bg: #0f141f;
+        --line: rgba(176, 196, 220, 0.2);
+        --line-strong: rgba(176, 196, 220, 0.4);
+        --text: #ecf2ff;
+        --muted: #afbdd9;
+        --primary: #8cb3ff;
+        --ok: #8be4bf;
+      }
+
+      body[data-theme="graphite"] {
+        --bg: #111214;
+        --line: rgba(185, 185, 190, 0.22);
+        --line-strong: rgba(190, 190, 198, 0.44);
+        --text: #f2f3f5;
+        --muted: #babdc8;
+        --primary: #9cb2d9;
+        --ok: #8ad1b2;
+      }
+
       @media (max-width: 1120px) {
         .controls {
           grid-template-columns: 1.2fr 1fr 1fr 1fr;
@@ -249,6 +363,12 @@
           font-size: 22px;
         }
 
+        .settings-panel {
+          top: auto;
+          right: 12px;
+          bottom: 12px;
+        }
+
         .controls {
           grid-template-columns: 1fr 1fr;
         }
@@ -258,8 +378,20 @@
   <body>
     <div class="wrap">
       <section class="hero">
-        <h1 class="title">cmdfind desktop</h1>
-        <p class="subtitle">Finde passende Befehle schneller und mit klarerer Oberfläche.</p>
+        <div class="hero-top">
+          <div>
+            <h1 class="title">cmdfind desktop</h1>
+            <p class="subtitle">Finde passende Befehle schneller und mit klarerer Oberfläche.</p>
+          </div>
+          <button id="settingsToggle" class="settings-toggle" aria-label="Open settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"></path>
+              <path
+                d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 0 1-2.82 2.82l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .33 1.7 1.7 0 0 0-.77 1.5V21.4a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-.77-1.5 1.7 1.7 0 0 0-1-.33 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.82-2.82l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.33-1 1.7 1.7 0 0 0-1.5-.77H2.6a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-.77 1.7 1.7 0 0 0 .33-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.82-2.82l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.33 1.7 1.7 0 0 0 .77-1.5V2.6a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .77 1.5 1.7 1.7 0 0 0 1 .33 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.82 2.82l-.06.06A1.7 1.7 0 0 0 19.4 9c0 .36.12.7.33 1 .2.3.5.5.85.63.2.08.42.12.65.12h.17a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5.77c-.2.3-.33.64-.33 1Z">
+              </path>
+            </svg>
+          </button>
+        </div>
 
         <div class="controls">
           <input id="query" type="text" placeholder="Search command... e.g. process on port 3000" />
@@ -297,6 +429,42 @@
 
       <section id="results" class="results"></section>
     </div>
+
+    <aside id="settingsPanel" class="settings-panel" hidden>
+      <div class="settings-head">
+        <h2 class="settings-title">Einstellungen</h2>
+        <button id="settingsClose" class="settings-close" aria-label="Close settings">×</button>
+      </div>
+      <div class="settings-grid">
+        <div class="setting">
+          <label for="themeSelect">Theme</label>
+          <select id="themeSelect">
+            <option value="midnight">Midnight</option>
+            <option value="slate">Slate</option>
+            <option value="graphite">Graphite</option>
+          </select>
+          <div class="theme-preview">
+            <span class="chip">Dark</span>
+            <span class="chip">High Contrast</span>
+          </div>
+        </div>
+
+        <div class="setting">
+          <label for="accentColor">Akzentfarbe</label>
+          <input id="accentColor" type="color" value="#6ca5ff" />
+        </div>
+
+        <div class="setting">
+          <label for="uiScale">UI-Größe</label>
+          <input id="uiScale" type="range" min="90" max="120" value="100" />
+        </div>
+
+        <div class="setting">
+          <label for="radiusScale">Rundungen</label>
+          <input id="radiusScale" type="range" min="8" max="20" value="14" />
+        </div>
+      </div>
+    </aside>
 
     <script type="module" src="./renderer.js"></script>
   </body>
