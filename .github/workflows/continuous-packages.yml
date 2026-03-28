@@ -78,15 +78,31 @@ jobs:
           merge-multiple: true
           path: release-assets
 
-      - name: Publish GitHub Release (continuous)
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: continuous
-          name: cmdfind Continuous Desktop Build
-          prerelease: true
-          target_commitish: ${{ github.sha }}
-          overwrite_files: true
-          files: release-assets/**/*
-          body: |
-            Auto-generated desktop packages from commit `${{ github.sha }}`.
-            Updated on every push to `main`.
+      - name: Ensure continuous release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view continuous >/dev/null 2>&1 || gh release create continuous \
+            --title "cmdfind Continuous Desktop Build" \
+            --notes "Auto-generated desktop packages." \
+            --prerelease
+
+      - name: Update release metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit continuous \
+            --title "cmdfind Continuous Desktop Build" \
+            --notes "Auto-generated desktop packages from commit ${{ github.sha }}. Updated on every push to main." \
+            --prerelease
+
+      - name: Upload assets to continuous release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -d '' files < <(find release-assets -type f -print0)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No release assets found to upload."
+            exit 1
+          fi
+          gh release upload continuous "${files[@]}" --clobber
