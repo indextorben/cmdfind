@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld("cmdfindDesktop", {
   terminalInput: (input: string) => ipcRenderer.invoke("cmdfind:terminal-input", input),
   terminalResize: (cols: number, rows: number) => ipcRenderer.invoke("cmdfind:terminal-resize", cols, rows),
   terminalStop: () => ipcRenderer.invoke("cmdfind:terminal-stop"),
+  listDirectories: (request: { cwdHint?: string; inputPath?: string; limit?: number; onlyDirectories?: boolean }) =>
+    ipcRenderer.invoke("cmdfind:list-directories", request),
   onTerminalOutput: (callback: (chunk: string) => void) => {
     const listener = (_event: unknown, chunk: string) => callback(chunk);
     ipcRenderer.on("cmdfind:terminal-output", listener);

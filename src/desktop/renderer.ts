@@ -43,6 +43,14 @@ declare global {
       terminalInput: (input: string) => Promise<boolean>;
       terminalResize: (cols: number, rows: number) => Promise<boolean>;
       terminalStop: () => Promise<boolean>;
+      listDirectories: (request: {
+        cwdHint?: string;
+        inputPath?: string;
+        limit?: number;
+        onlyDirectories?: boolean;
+      }) => Promise<
+        Array<{ value: string; label: string }>
+      >;
       onTerminalOutput: (callback: (chunk: string) => void) => () => void;
     };
   }
@@ -75,6 +83,7 @@ const terminalPanel = document.querySelector<HTMLElement>("#terminalPanel")!;
 const terminalOutput = document.querySelector<HTMLPreElement>("#terminalOutput")!;
 const terminalForm = document.querySelector<HTMLFormElement>("#terminalForm")!;
 const terminalInput = document.querySelector<HTMLInputElement>("#terminalInput")!;
+const terminalRun = document.querySelector<HTMLButtonElement>("#terminalRun")!;
 const terminalClear = document.querySelector<HTMLButtonElement>("#terminalClear")!;
 const terminalStop = document.querySelector<HTMLButtonElement>("#terminalStop")!;
 const terminalSuggest = document.querySelector<HTMLDivElement>("#terminalSuggest")!;
@@ -98,6 +107,45 @@ let terminalCursorCol = 0;
 let terminalSuggestions: string[] = [];
 let terminalSuggestionIndex = -1;
 let terminalSuggestTimer: number | undefined;
+let terminalInputHadFocus = false;
+let suppressInlineAutocompleteOnce = false;
+let terminalCurrentDirHint = "~";
+
+const quickSettingsFields: HTMLElement[] = [
+  queryInput,
+  langSelect,
+  platformSelect,
+  shellSelect,
+  limitInput,
+  searchBtn,
+  allBtn,
+  currentContextCheckbox,
+  refreshCheckbox,
+  disableLocalCheckbox,
+  saveLangBtn
+];
+
+function moveQuickSettingsFocus(current: HTMLElement, direction: "left" | "right" | "up" | "down"): void {
+  const currentIndex = quickSettingsFields.indexOf(current);
+  if (currentIndex < 0) return;
+
+  const firstRowColumns = 7;
+  let nextIndex = currentIndex;
+
+  if (direction === "left") {
+    nextIndex = Math.max(0, currentIndex - 1);
+  } else if (direction === "right") {
+    nextIndex = Math.min(quickSettingsFields.length - 1, currentIndex + 1);
+  } else if (direction === "up") {
+    nextIndex = Math.max(0, currentIndex - firstRowColumns);
+  } else if (direction === "down") {
+    nextIndex = Math.min(quickSettingsFields.length - 1, currentIndex + firstRowColumns);
+  }
+
+  if (nextIndex !== currentIndex) {
+    quickSettingsFields[nextIndex]?.focus();
+  }
+}
 
 function readUiSettings(): UiSettings {
   try {
@@ -250,6 +298,33 @@ queryInput.addEventListener("keydown", (event) => {
   }
 });
 
+for (const field of quickSettingsFields) {
+  field.addEventListener("keydown", (event) => {
+    const target = event.currentTarget as HTMLElement;
+    if (!target) return;
+
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      moveQuickSettingsFocus(target, "left");
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      moveQuickSettingsFocus(target, "right");
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveQuickSettingsFocus(target, "up");
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveQuickSettingsFocus(target, "down");
+    }
+  });
+}
+
 saveLangBtn.addEventListener("click", async () => {
   const selected = langSelect.value as "de" | "en" | "auto";
   if (selected === "auto") {
@@ -273,6 +348,10 @@ settingsClose.addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !terminalPanel.hidden) {
+    setTerminalOpen(false);
+    return;
+  }
   if (event.key === "Escape") {
     setSettingsOpen(false);
   }
@@ -369,6 +448,17 @@ function appendTerminalOutput(chunk: string): void {
 
   terminalOutput.innerHTML = withMarkup;
   terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+  const promptMatch = plainOutput.match(/\n?[^\s]+\s+(.+?)\s+[%$#]\s[^\n]*$/);
+  if (promptMatch?.[1]) {
+    terminalCurrentDirHint = promptMatch[1].trim();
+  }
+}
+
+function clearTerminalDisplay(): void {
+  terminalRows = [""];
+  terminalCursorCol = 0;
+  terminalOutput.textContent = "";
 }
 
 function getTerminalSizeEstimate(): { cols: number; rows: number } {
@@ -407,7 +497,9 @@ function renderTerminalSuggestions(): void {
   terminalSuggest.innerHTML = terminalSuggestions
     .map((cmd, index) => {
       const activeClass = index === terminalSuggestionIndex ? " is-active" : "";
-      return `<button type="button" class="terminal-suggest-item${activeClass}" data-cmd="${escapeHtml(cmd)}">${escapeHtml(
+      return `<button type="button" tabindex="-1" class="terminal-suggest-item${activeClass}" data-cmd="${escapeHtml(
+        cmd
+      )}">${escapeHtml(
         cmd
       )}</button>`;
     })
@@ -415,11 +507,39 @@ function renderTerminalSuggestions(): void {
   terminalSuggest.hidden = false;
 }
 
-async function updateTerminalSuggestions(prefixRaw: string): Promise<void> {
-  const prefix = prefixRaw.trim();
-  if (!prefix) {
+async function updateTerminalSuggestions(prefixRaw: string, options?: { allowInline?: boolean }): Promise<void> {
+  const allowInline = options?.allowInline !== false;
+  const raw = prefixRaw;
+  const prefix = raw.trim();
+  const cdMatch = raw.match(/^cd(?:\s+(.+))?$/);
+  if (!prefix && !cdMatch) {
     closeTerminalSuggestions();
     return;
+  }
+
+  if (cdMatch) {
+    const cdArgRaw = cdMatch[1] ?? "";
+    try {
+      const dirEntries = await window.cmdfindDesktop.listDirectories({
+        cwdHint: terminalCurrentDirHint,
+        inputPath: cdArgRaw,
+        limit: 12,
+        onlyDirectories: false
+      });
+      const cdSuggestions = dirEntries.map((entry) => `cd ${entry.value}`).sort((a, b) => a.localeCompare(b));
+      const current = raw.trimEnd();
+      const best = cdSuggestions[0];
+
+      // Warp-like behavior for `cd`: no list popup, only inline grey completion.
+      if (allowInline && best && best.toLowerCase().startsWith(current.toLowerCase()) && best.length > current.length) {
+        terminalInput.value = best;
+        terminalInput.setSelectionRange(current.length, best.length);
+      }
+      closeTerminalSuggestions();
+      return;
+    } catch {
+      // fall through to regular command suggestions
+    }
   }
 
   const historyMatches = Array.from(
@@ -451,6 +571,16 @@ async function updateTerminalSuggestions(prefixRaw: string): Promise<void> {
   }
 
   const combined = Array.from(new Set([...historyMatches, ...searchMatches])).slice(0, 8);
+  if (allowInline && combined.length === 1) {
+    const only = combined[0]!;
+    if (only.toLowerCase().startsWith(prefix.toLowerCase()) && only.length > prefix.length) {
+      terminalInput.value = only;
+      terminalInput.setSelectionRange(prefix.length, only.length);
+      closeTerminalSuggestions();
+      return;
+    }
+  }
+
   terminalSuggestions = combined;
   terminalSuggestionIndex = combined.length ? 0 : -1;
   renderTerminalSuggestions();
@@ -459,11 +589,40 @@ async function updateTerminalSuggestions(prefixRaw: string): Promise<void> {
 function setTerminalOpen(open: boolean): void {
   terminalPanel.hidden = !open;
   if (open) {
+    document.body.dataset.terminalMode = "focus";
+  } else {
+    delete document.body.dataset.terminalMode;
+  }
+  if (open) {
     terminalInput.focus();
   } else {
     closeTerminalSuggestions();
   }
 }
+
+// Keep typing focus in the command field; the run button stays mouse-clickable.
+terminalRun.tabIndex = -1;
+terminalClear.tabIndex = -1;
+terminalStop.tabIndex = -1;
+
+terminalInput.addEventListener("focus", () => {
+  terminalInputHadFocus = true;
+});
+
+terminalInput.addEventListener("blur", () => {
+  if (!terminalPanel.hidden) {
+    window.setTimeout(() => {
+      if (
+        terminalInputHadFocus &&
+        (document.activeElement === terminalRun ||
+          document.activeElement === terminalClear ||
+          document.activeElement === terminalStop)
+      ) {
+        terminalInput.focus();
+      }
+    }, 0);
+  }
+});
 
 terminalToggle.addEventListener("click", async () => {
   const opening = terminalPanel.hidden;
@@ -496,14 +655,43 @@ terminalForm.addEventListener("submit", async (event) => {
     }
   }
 
+  if (command.toLowerCase() === "clear") {
+    clearTerminalDisplay();
+    closeTerminalSuggestions();
+    terminalInput.value = "";
+    await window.cmdfindDesktop.terminalInput("\n");
+    return;
+  }
+
   await window.cmdfindDesktop.terminalInput(`${command}\n`);
   terminalHistory.push(command);
   terminalHistoryIndex = terminalHistory.length;
   terminalInput.value = "";
   closeTerminalSuggestions();
+  terminalInput.focus();
 });
 
 terminalInput.addEventListener("keydown", async (event) => {
+  if (event.key === "Shift") {
+    event.preventDefault();
+    terminalInput.focus();
+    return;
+  }
+
+  if (event.key === "Backspace" && event.metaKey) {
+    event.preventDefault();
+    terminalInput.value = "";
+    closeTerminalSuggestions();
+    suppressInlineAutocompleteOnce = true;
+    return;
+  }
+
+  if ((event.key === "Backspace" || event.key === "Delete") && !event.metaKey) {
+    suppressInlineAutocompleteOnce = true;
+  } else if (event.key.length === 1 || event.key === "Tab") {
+    suppressInlineAutocompleteOnce = false;
+  }
+
   if (event.key === "Tab") {
     if (!terminalSuggestions.length) return;
     event.preventDefault();
@@ -544,7 +732,7 @@ terminalInput.addEventListener("keydown", async (event) => {
     return;
   }
 
-  if (event.key === "Enter" && terminalSuggestions.length && terminalSuggestionIndex >= 0) {
+  if (event.key === "Enter" && event.shiftKey && terminalSuggestions.length && terminalSuggestionIndex >= 0) {
     event.preventDefault();
     const chosen = terminalSuggestions[terminalSuggestionIndex];
     if (chosen) {
@@ -570,7 +758,9 @@ terminalInput.addEventListener("input", () => {
     window.clearTimeout(terminalSuggestTimer);
   }
   terminalSuggestTimer = window.setTimeout(() => {
-    void updateTerminalSuggestions(terminalInput.value);
+    const allowInline = !suppressInlineAutocompleteOnce;
+    suppressInlineAutocompleteOnce = false;
+    void updateTerminalSuggestions(terminalInput.value, { allowInline });
   }, 120);
 });
 
@@ -584,9 +774,7 @@ terminalSuggest.addEventListener("click", (event) => {
 });
 
 terminalClear.addEventListener("click", () => {
-  terminalRows = [""];
-  terminalCursorCol = 0;
-  terminalOutput.textContent = "";
+  clearTerminalDisplay();
 });
 
 terminalStop.addEventListener("click", async () => {

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
@@ -210,6 +211,117 @@ ipcMain.handle("cmdfind:set-default-language", (_event, language: Language) => {
   });
   return true;
 });
+
+function stripWrappingQuotes(value: string): string {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2)
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return value;
+}
+
+function resolveShellPathInput(inputPath: string, cwdHint: string): string {
+  const homeDir = os.homedir();
+  const normalizedCwd = cwdHint.startsWith("~") ? path.join(homeDir, cwdHint.slice(1)) : cwdHint;
+  const clean = stripWrappingQuotes(inputPath);
+  if (!clean) {
+    return path.resolve(normalizedCwd);
+  }
+  if (clean.startsWith("~")) {
+    return path.resolve(path.join(homeDir, clean.slice(1)));
+  }
+  if (path.isAbsolute(clean)) {
+    return path.resolve(clean);
+  }
+  return path.resolve(normalizedCwd, clean);
+}
+
+ipcMain.handle(
+  "cmdfind:list-directories",
+  (
+    _event,
+    request: { cwdHint?: string; inputPath?: string; limit?: number; onlyDirectories?: boolean }
+  ): Array<{ value: string; label: string }> => {
+    const cwdHint = request.cwdHint?.trim() || "~";
+    const inputPath = request.inputPath ?? "";
+    const limit = Math.max(1, Math.min(50, Number(request.limit) || 12));
+    const onlyDirectories = request.onlyDirectories === true;
+    const clean = stripWrappingQuotes(inputPath);
+
+    const hasSlash = /[\\/]/.test(clean);
+    const slashIndex = Math.max(clean.lastIndexOf("/"), clean.lastIndexOf("\\"));
+    const dirPart = slashIndex >= 0 ? clean.slice(0, slashIndex + 1) : "";
+    const prefix = slashIndex >= 0 ? clean.slice(slashIndex + 1) : clean;
+
+    const baseForListing = resolveShellPathInput(dirPart || ".", cwdHint);
+    const homeDir = os.homedir();
+    const startsFromHome = clean.startsWith("~");
+    const startsAbsolute = clean.startsWith("/") || path.isAbsolute(clean);
+
+    const formatEntryValue = (abs: string, leftPrefix: string): string => {
+      let value: string;
+      if (startsFromHome) {
+        value = `~${abs.slice(homeDir.length)}`.replaceAll(path.sep, "/");
+      } else if (startsAbsolute) {
+        value = abs.replaceAll(path.sep, "/");
+      } else {
+        const left = leftPrefix.replaceAll("\\", "/");
+        value = `${left}${path.basename(abs)}/`;
+      }
+
+      if (!value.endsWith("/")) {
+        value += "/";
+      }
+      return value;
+    };
+
+    const listFromBase = (base: string, namePrefix: string, leftPrefix: string): Array<{ value: string; label: string }> => {
+      try {
+        return fs
+          .readdirSync(base, { withFileTypes: true })
+          .filter((entry) => (onlyDirectories ? entry.isDirectory() : entry.isDirectory() || entry.isFile()))
+          .filter((entry) => entry.name.toLowerCase().startsWith(namePrefix.toLowerCase()))
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .slice(0, limit)
+          .map((entry) => {
+            const abs = path.join(base, entry.name);
+            let value = formatEntryValue(abs, leftPrefix);
+            if (!entry.isDirectory()) {
+              value = value.replace(/\/+$/g, "");
+            }
+            return { value, label: value };
+          });
+      } catch {
+        return [];
+      }
+    };
+
+    try {
+      // Strict mode: suggest only real entries from the actually resolved base path.
+      let entries = listFromBase(baseForListing, prefix, dirPart);
+
+      // If user typed "cd Folder" (without trailing slash) and Folder exists,
+      // prioritize showing Folder's subdirectories (Warp-like path expansion feel).
+      if (clean && !hasSlash) {
+        const candidateAbs = resolveShellPathInput(clean, cwdHint);
+        if (fs.existsSync(candidateAbs) && fs.statSync(candidateAbs).isDirectory()) {
+          const leftPrefix = `${clean.replaceAll("\\", "/").replace(/\/+$/g, "")}/`;
+          const childEntries = listFromBase(candidateAbs, "", leftPrefix);
+          if (childEntries.length) {
+            entries = childEntries;
+          }
+        }
+      }
+
+      return entries;
+    } catch {
+      return [];
+    }
+  }
+);
 
 ipcMain.handle("cmdfind:terminal-start", (event) => {
   const senderId = event.sender.id;
