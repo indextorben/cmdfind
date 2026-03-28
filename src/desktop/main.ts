@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain } from "electron";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
@@ -29,18 +30,22 @@ type TerminalSession =
 
 const terminalSessions = new Map<number, TerminalSession>();
 
-function getCmdfindBanner(): string {
-  return [
-    "",
-    "   ________  ___  ______  _________  _____  _   ________ ",
-    "  / ____/  |/  / / __  / / ____/   |/ ___/ / | / / __  / ",
-    " / /   / /|_/ / / / / / / /_  / /| |\\__ \\ /  |/ / / / /  ",
-    "/ /___/ /  / / / /_/ / / __/ / ___ |___/ // /|  / /_/ /   ",
-    "\\____/_/  /_/ /_____/ /_/   /_/  |_/____//_/ |_/_____/    ",
-    "",
-    "                cmdfind integrated terminal                ",
-    ""
-  ].join("\n");
+function resolveShellPath(): string {
+  if (process.platform === "win32") {
+    return "powershell.exe";
+  }
+
+  const envShell = process.env.SHELL;
+  if (envShell && fs.existsSync(envShell)) {
+    return envShell;
+  }
+  if (fs.existsSync("/bin/zsh")) {
+    return "/bin/zsh";
+  }
+  if (fs.existsSync("/bin/bash")) {
+    return "/bin/bash";
+  }
+  return "/bin/sh";
 }
 
 interface DesktopSearchRequest {
@@ -173,12 +178,12 @@ function createWindow(): void {
       preload: path.join(__dirname, "preload.cjs")
     }
   });
+  const webContentsId = window.webContents.id;
 
   window.loadFile(path.join(__dirname, "index.html"));
 
   window.on("closed", () => {
-    const pid = window.webContents.id;
-    const session = terminalSessions.get(pid);
+    const session = terminalSessions.get(webContentsId);
     if (session) {
       try {
         session.kill();
@@ -186,7 +191,7 @@ function createWindow(): void {
         // ignore
       }
     }
-    terminalSessions.delete(pid);
+    terminalSessions.delete(webContentsId);
   });
 }
 
@@ -208,12 +213,22 @@ ipcMain.handle("cmdfind:set-default-language", (_event, language: Language) => {
 
 ipcMain.handle("cmdfind:terminal-start", (event) => {
   const senderId = event.sender.id;
+  const sendTerminalOutput = (message: string): void => {
+    try {
+      if (event.sender.isDestroyed()) {
+        return;
+      }
+      event.sender.send("cmdfind:terminal-output", message);
+    } catch {
+      // Renderer already gone; ignore late PTY/process events during shutdown.
+    }
+  };
   const existing = terminalSessions.get(senderId);
   if (existing) {
     return true;
   }
 
-  const shell = process.platform === "win32" ? "powershell.exe" : process.env.SHELL || "/bin/zsh";
+  const shell = resolveShellPath();
   const normalizedShell = path.basename(shell).toLowerCase();
   const args =
     process.platform === "win32"
@@ -223,6 +238,16 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
       : normalizedShell.includes("bash")
       ? ["--noprofile", "--norc", "-i"]
       : ["-i"];
+  const terminalEnv: NodeJS.ProcessEnv = {
+    ...process.env,
+    TERM: "xterm-256color"
+  };
+  if (normalizedShell.includes("zsh")) {
+    terminalEnv.PROMPT = "%n %~ %# ";
+  }
+  if (normalizedShell.includes("bash")) {
+    terminalEnv.PS1 = "\\u \\w \\$ ";
+  }
 
   let startedWithPty = false;
 
@@ -246,10 +271,7 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
       cols: 110,
       rows: 26,
       cwd: process.cwd(),
-      env: {
-        ...process.env,
-        TERM: "xterm-256color"
-      }
+      env: terminalEnv
     });
 
     terminalSessions.set(senderId, {
@@ -259,45 +281,53 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
       resize: (cols: number, rows: number) => ptyChild.resize(cols, rows)
     });
     ptyChild.onData((chunk: string) => {
-      event.sender.send("cmdfind:terminal-output", chunk);
+      sendTerminalOutput(chunk);
     });
 
     ptyChild.onExit(({ exitCode }) => {
       terminalSessions.delete(senderId);
-      event.sender.send("cmdfind:terminal-output", `\n[terminal exited with code ${exitCode}]\n`);
+      sendTerminalOutput(`\n[terminal exited with code ${exitCode}]\n`);
     });
 
     startedWithPty = true;
   } catch {
     // Fallback keeps app functional even if native PTY isn't available.
-    const proc = spawn(shell, args, {
-      stdio: "pipe",
-      cwd: process.cwd(),
-      env: process.env
-    });
+    try {
+      const proc = spawn(shell, args, {
+        stdio: "pipe",
+        cwd: process.cwd(),
+        env: terminalEnv
+      });
 
-    terminalSessions.set(senderId, {
-      kind: "process",
-      process: proc,
-      write: (input: string) => proc.stdin.write(input),
-      kill: () => proc.kill()
-    });
-    proc.stdout.on("data", (chunk: Buffer) => {
-      event.sender.send("cmdfind:terminal-output", chunk.toString());
-    });
-    proc.stderr.on("data", (chunk: Buffer) => {
-      event.sender.send("cmdfind:terminal-output", chunk.toString());
-    });
-    proc.on("exit", (code) => {
-      terminalSessions.delete(senderId);
-      event.sender.send("cmdfind:terminal-output", `\n[terminal exited with code ${code ?? 0}]\n`);
-    });
+      terminalSessions.set(senderId, {
+        kind: "process",
+        process: proc,
+        write: (input: string) => proc.stdin.write(input),
+        kill: () => proc.kill()
+      });
+      proc.stdout.on("data", (chunk: Buffer) => {
+        sendTerminalOutput(chunk.toString());
+      });
+      proc.stderr.on("data", (chunk: Buffer) => {
+        sendTerminalOutput(chunk.toString());
+      });
+      proc.on("exit", (code) => {
+        terminalSessions.delete(senderId);
+        sendTerminalOutput(`\n[terminal exited with code ${code ?? 0}]\n`);
+      });
+      proc.on("error", (error) => {
+        sendTerminalOutput(`\n[terminal process error: ${String(error)}]\n`);
+      });
+    } catch (error) {
+      sendTerminalOutput(`\n[terminal could not start: ${String(error)}]\n`);
+      return false;
+    }
   }
 
-  event.sender.send("cmdfind:terminal-output", `${getCmdfindBanner()}\n`);
   if (!startedWithPty) {
-    event.sender.send("cmdfind:terminal-output", `[terminal started in compatibility mode: ${shell}]\n`);
+    sendTerminalOutput(`[terminal started in compatibility mode: ${shell}]\n`);
   }
+  sendTerminalOutput("[CMDFIND] integrated terminal ready\n");
   return true;
 });
 

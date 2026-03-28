@@ -77,6 +77,7 @@ const terminalForm = document.querySelector<HTMLFormElement>("#terminalForm")!;
 const terminalInput = document.querySelector<HTMLInputElement>("#terminalInput")!;
 const terminalClear = document.querySelector<HTMLButtonElement>("#terminalClear")!;
 const terminalStop = document.querySelector<HTMLButtonElement>("#terminalStop")!;
+const terminalSuggest = document.querySelector<HTMLDivElement>("#terminalSuggest")!;
 
 type UiSettings = {
   theme: "midnight" | "slate" | "graphite" | "sunset" | "emerald" | "amber" | "cyber" | "rose";
@@ -92,6 +93,11 @@ const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite",
 let terminalStarted = false;
 const terminalHistory: string[] = [];
 let terminalHistoryIndex = -1;
+let terminalRows: string[] = [""];
+let terminalCursorCol = 0;
+let terminalSuggestions: string[] = [];
+let terminalSuggestionIndex = -1;
+let terminalSuggestTimer: number | undefined;
 
 function readUiSettings(): UiSettings {
   try {
@@ -306,34 +312,62 @@ function appendTerminalOutput(chunk: string): void {
     .replace(/\u001b[@-Z\\-_]/g, "")
     .replace(/[\uE000-\uF8FF\uFFFD]/g, "");
 
-  let content = terminalOutput.textContent || "";
-  for (const char of normalized) {
-    if (char === "\r") {
-      const lastNewline = content.lastIndexOf("\n");
-      content = lastNewline >= 0 ? content.slice(0, lastNewline + 1) : "";
+  for (const ch of normalized) {
+    if (ch === "\r") {
+      terminalCursorCol = 0;
       continue;
     }
 
-    if (char === "\b") {
-      if (content.length > 0 && content[content.length - 1] !== "\n") {
-        content = content.slice(0, -1);
+    if (ch === "\n") {
+      terminalRows.push("");
+      terminalCursorCol = 0;
+      continue;
+    }
+
+    if (ch === "\b") {
+      if (terminalCursorCol > 0) {
+        const rowIdx = terminalRows.length - 1;
+        const row = terminalRows[rowIdx] || "";
+        const nextCursor = terminalCursorCol - 1;
+        terminalRows[rowIdx] = `${row.slice(0, nextCursor)}${row.slice(terminalCursorCol)}`;
+        terminalCursorCol = nextCursor;
       }
       continue;
     }
 
-    if (char === "\u0007") {
+    if (ch === "\u0007") {
       continue;
     }
 
-    const code = char.charCodeAt(0);
-    if (code < 32 && char !== "\n" && char !== "\t") {
+    const code = ch.charCodeAt(0);
+    if (code < 32 && ch !== "\t") {
       continue;
     }
 
-    content += char;
+    const rowIdx = terminalRows.length - 1;
+    const row = terminalRows[rowIdx] || "";
+    if (terminalCursorCol >= row.length) {
+      const pad = terminalCursorCol > row.length ? " ".repeat(terminalCursorCol - row.length) : "";
+      terminalRows[rowIdx] = `${row}${pad}${ch}`;
+    } else {
+      terminalRows[rowIdx] = `${row.slice(0, terminalCursorCol)}${ch}${row.slice(terminalCursorCol + 1)}`;
+    }
+    terminalCursorCol += 1;
   }
 
-  terminalOutput.textContent = content;
+  if (terminalRows.length > 2200) {
+    terminalRows = terminalRows.slice(-1800);
+  }
+
+  const plainOutput = terminalRows.join("\n");
+  const withMarkup = escapeHtml(plainOutput)
+    .replace(/(\[CMDFIND\][^\n]*)/g, '<span class="term-line-badge">$1</span>')
+    .replace(/(^|\n)([^\n]*[%$#]\s)([^\n]*)/g, '$1<span class="term-prompt">$2</span><span class="term-command">$3</span>')
+    .replace(/\b(error|failed|not found|permission denied|denied)\b/gi, '<span class="term-error">$1</span>')
+    .replace(/\b(warn|warning)\b/gi, '<span class="term-warn">$1</span>')
+    .replace(/\b(success|done|completed|ready)\b/gi, '<span class="term-ok">$1</span>');
+
+  terminalOutput.innerHTML = withMarkup;
   terminalOutput.scrollTop = terminalOutput.scrollHeight;
 }
 
@@ -346,10 +380,88 @@ function getTerminalSizeEstimate(): { cols: number; rows: number } {
   };
 }
 
+function closeTerminalSuggestions(): void {
+  terminalSuggestions = [];
+  terminalSuggestionIndex = -1;
+  terminalSuggest.hidden = true;
+  terminalSuggest.innerHTML = "";
+}
+
+function applyTerminalSuggestion(command: string): void {
+  terminalInput.value = command;
+  terminalInput.focus();
+  terminalInput.setSelectionRange(command.length, command.length);
+  closeTerminalSuggestions();
+}
+
+function renderTerminalSuggestions(): void {
+  if (!terminalSuggestions.length) {
+    closeTerminalSuggestions();
+    return;
+  }
+
+  if (terminalSuggestionIndex < 0 || terminalSuggestionIndex >= terminalSuggestions.length) {
+    terminalSuggestionIndex = 0;
+  }
+
+  terminalSuggest.innerHTML = terminalSuggestions
+    .map((cmd, index) => {
+      const activeClass = index === terminalSuggestionIndex ? " is-active" : "";
+      return `<button type="button" class="terminal-suggest-item${activeClass}" data-cmd="${escapeHtml(cmd)}">${escapeHtml(
+        cmd
+      )}</button>`;
+    })
+    .join("");
+  terminalSuggest.hidden = false;
+}
+
+async function updateTerminalSuggestions(prefixRaw: string): Promise<void> {
+  const prefix = prefixRaw.trim();
+  if (!prefix) {
+    closeTerminalSuggestions();
+    return;
+  }
+
+  const historyMatches = Array.from(
+    new Set(
+      [...terminalHistory]
+        .reverse()
+        .filter((cmd) => cmd.toLowerCase().startsWith(prefix.toLowerCase()))
+        .slice(0, 10)
+    )
+  );
+
+  let searchMatches: string[] = [];
+  try {
+    const response = await window.cmdfindDesktop.search({
+      query: prefix,
+      limit: 12,
+      useCurrentContext: false
+    });
+    searchMatches = Array.from(
+      new Set(
+        response.results
+          .map((item) => item.entry.command.trim())
+          .filter((cmd) => cmd.length > 0)
+          .filter((cmd) => cmd.toLowerCase().startsWith(prefix.toLowerCase()))
+      )
+    );
+  } catch {
+    // ignore, history suggestions still work
+  }
+
+  const combined = Array.from(new Set([...historyMatches, ...searchMatches])).slice(0, 8);
+  terminalSuggestions = combined;
+  terminalSuggestionIndex = combined.length ? 0 : -1;
+  renderTerminalSuggestions();
+}
+
 function setTerminalOpen(open: boolean): void {
   terminalPanel.hidden = !open;
   if (open) {
     terminalInput.focus();
+  } else {
+    closeTerminalSuggestions();
   }
 }
 
@@ -388,10 +500,27 @@ terminalForm.addEventListener("submit", async (event) => {
   terminalHistory.push(command);
   terminalHistoryIndex = terminalHistory.length;
   terminalInput.value = "";
+  closeTerminalSuggestions();
 });
 
 terminalInput.addEventListener("keydown", async (event) => {
+  if (event.key === "Tab") {
+    if (!terminalSuggestions.length) return;
+    event.preventDefault();
+    const chosen = terminalSuggestions[Math.max(0, terminalSuggestionIndex)];
+    if (chosen) {
+      applyTerminalSuggestion(chosen);
+    }
+    return;
+  }
+
   if (event.key === "ArrowUp") {
+    if (terminalSuggestions.length) {
+      event.preventDefault();
+      terminalSuggestionIndex = Math.max(0, terminalSuggestionIndex - 1);
+      renderTerminalSuggestions();
+      return;
+    }
     event.preventDefault();
     if (!terminalHistory.length) return;
     terminalHistoryIndex = Math.max(0, terminalHistoryIndex - 1);
@@ -401,11 +530,31 @@ terminalInput.addEventListener("keydown", async (event) => {
   }
 
   if (event.key === "ArrowDown") {
+    if (terminalSuggestions.length) {
+      event.preventDefault();
+      terminalSuggestionIndex = Math.min(terminalSuggestions.length - 1, terminalSuggestionIndex + 1);
+      renderTerminalSuggestions();
+      return;
+    }
     event.preventDefault();
     if (!terminalHistory.length) return;
     terminalHistoryIndex = Math.min(terminalHistory.length, terminalHistoryIndex + 1);
     terminalInput.value = terminalHistory[terminalHistoryIndex] || "";
     terminalInput.setSelectionRange(terminalInput.value.length, terminalInput.value.length);
+    return;
+  }
+
+  if (event.key === "Enter" && terminalSuggestions.length && terminalSuggestionIndex >= 0) {
+    event.preventDefault();
+    const chosen = terminalSuggestions[terminalSuggestionIndex];
+    if (chosen) {
+      applyTerminalSuggestion(chosen);
+    }
+    return;
+  }
+
+  if (event.key === "Escape") {
+    closeTerminalSuggestions();
     return;
   }
 
@@ -416,7 +565,27 @@ terminalInput.addEventListener("keydown", async (event) => {
   }
 });
 
+terminalInput.addEventListener("input", () => {
+  if (terminalSuggestTimer) {
+    window.clearTimeout(terminalSuggestTimer);
+  }
+  terminalSuggestTimer = window.setTimeout(() => {
+    void updateTerminalSuggestions(terminalInput.value);
+  }, 120);
+});
+
+terminalSuggest.addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  const btn = target.closest<HTMLButtonElement>(".terminal-suggest-item");
+  if (!btn) return;
+  const cmd = btn.getAttribute("data-cmd");
+  if (!cmd) return;
+  applyTerminalSuggestion(cmd);
+});
+
 terminalClear.addEventListener("click", () => {
+  terminalRows = [""];
+  terminalCursorCol = 0;
   terminalOutput.textContent = "";
 });
 
