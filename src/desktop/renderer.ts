@@ -39,6 +39,11 @@ declare global {
       }) => Promise<DesktopSearchResponse>;
       getDefaultLanguage: () => Promise<"de" | "en" | null>;
       setDefaultLanguage: (language: "de" | "en") => Promise<boolean>;
+      terminalStart: () => Promise<boolean>;
+      terminalInput: (input: string) => Promise<boolean>;
+      terminalResize: (cols: number, rows: number) => Promise<boolean>;
+      terminalStop: () => Promise<boolean>;
+      onTerminalOutput: (callback: (chunk: string) => void) => () => void;
     };
   }
 }
@@ -63,31 +68,50 @@ const themeSelect = document.querySelector<HTMLSelectElement>("#themeSelect")!;
 const accentColor = document.querySelector<HTMLInputElement>("#accentColor")!;
 const uiScale = document.querySelector<HTMLInputElement>("#uiScale")!;
 const radiusScale = document.querySelector<HTMLInputElement>("#radiusScale")!;
+const terminalHeightRange = document.querySelector<HTMLInputElement>("#terminalHeight")!;
+const terminalFontSizeRange = document.querySelector<HTMLInputElement>("#terminalFontSize")!;
+const terminalToggle = document.querySelector<HTMLButtonElement>("#terminalToggle")!;
+const terminalPanel = document.querySelector<HTMLElement>("#terminalPanel")!;
+const terminalOutput = document.querySelector<HTMLPreElement>("#terminalOutput")!;
+const terminalForm = document.querySelector<HTMLFormElement>("#terminalForm")!;
+const terminalInput = document.querySelector<HTMLInputElement>("#terminalInput")!;
+const terminalClear = document.querySelector<HTMLButtonElement>("#terminalClear")!;
+const terminalStop = document.querySelector<HTMLButtonElement>("#terminalStop")!;
 
 type UiSettings = {
-  theme: "midnight" | "slate" | "graphite";
+  theme: "midnight" | "slate" | "graphite" | "sunset" | "emerald" | "amber" | "cyber" | "rose";
   accent: string;
   scale: number;
   radius: number;
+  terminalHeight: number;
+  terminalFontSize: number;
 };
 
 const uiSettingsKey = "cmdfind:desktop:ui-settings";
+const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite", "sunset", "emerald", "amber", "cyber", "rose"];
+let terminalStarted = false;
+const terminalHistory: string[] = [];
+let terminalHistoryIndex = -1;
 
 function readUiSettings(): UiSettings {
   try {
     const raw = localStorage.getItem(uiSettingsKey);
     if (!raw) {
-      return { theme: "midnight", accent: "#6ca5ff", scale: 100, radius: 14 };
+      return { theme: "midnight", accent: "#6ca5ff", scale: 100, radius: 14, terminalHeight: 420, terminalFontSize: 16 };
     }
     const parsed = JSON.parse(raw) as Partial<UiSettings>;
     return {
-      theme: parsed.theme === "slate" || parsed.theme === "graphite" ? parsed.theme : "midnight",
+      theme: supportedThemes.includes(parsed.theme as UiSettings["theme"])
+        ? (parsed.theme as UiSettings["theme"])
+        : "midnight",
       accent: typeof parsed.accent === "string" ? parsed.accent : "#6ca5ff",
       scale: typeof parsed.scale === "number" ? parsed.scale : 100,
-      radius: typeof parsed.radius === "number" ? parsed.radius : 14
+      radius: typeof parsed.radius === "number" ? parsed.radius : 14,
+      terminalHeight: typeof parsed.terminalHeight === "number" ? parsed.terminalHeight : 420,
+      terminalFontSize: typeof parsed.terminalFontSize === "number" ? parsed.terminalFontSize : 16
     };
   } catch {
-    return { theme: "midnight", accent: "#6ca5ff", scale: 100, radius: 14 };
+    return { theme: "midnight", accent: "#6ca5ff", scale: 100, radius: 14, terminalHeight: 420, terminalFontSize: 16 };
   }
 }
 
@@ -106,12 +130,24 @@ function applyUiSettings(settings: UiSettings): void {
   root.style.setProperty("--line-strong", `${settings.accent}88`);
   root.style.setProperty("--radius", `${settings.radius}px`);
   root.style.setProperty("--radius-sm", `${Math.max(8, settings.radius - 4)}px`);
-  root.style.fontSize = `${settings.scale}%`;
+  const clampedScale = Math.max(90, Math.min(120, settings.scale));
+  root.style.setProperty("--ui-scale", String(clampedScale / 100));
+  const clampedTerminalHeight = Math.max(260, Math.min(620, settings.terminalHeight));
+  const clampedTerminalFontSize = Math.max(13, Math.min(24, settings.terminalFontSize));
+  root.style.setProperty("--terminal-height", `${clampedTerminalHeight}px`);
+  root.style.setProperty("--terminal-font-size", `${clampedTerminalFontSize}px`);
 
   themeSelect.value = settings.theme;
   accentColor.value = settings.accent;
-  uiScale.value = String(settings.scale);
+  uiScale.value = String(clampedScale);
   radiusScale.value = String(settings.radius);
+  terminalHeightRange.value = String(clampedTerminalHeight);
+  terminalFontSizeRange.value = String(clampedTerminalFontSize);
+
+  if (terminalStarted) {
+    const size = getTerminalSizeEstimate();
+    void window.cmdfindDesktop.terminalResize(size.cols, size.rows);
+  }
 }
 
 function escapeHtml(text: string): string {
@@ -248,7 +284,9 @@ function syncUiSettings(): void {
     theme: themeSelect.value as UiSettings["theme"],
     accent: accentColor.value,
     scale: Number(uiScale.value),
-    radius: Number(radiusScale.value)
+    radius: Number(radiusScale.value),
+    terminalHeight: Number(terminalHeightRange.value),
+    terminalFontSize: Number(terminalFontSizeRange.value)
   };
   applyUiSettings(settings);
   saveUiSettings(settings);
@@ -258,6 +296,141 @@ themeSelect.addEventListener("change", syncUiSettings);
 accentColor.addEventListener("input", syncUiSettings);
 uiScale.addEventListener("input", syncUiSettings);
 radiusScale.addEventListener("input", syncUiSettings);
+terminalHeightRange.addEventListener("input", syncUiSettings);
+terminalFontSizeRange.addEventListener("input", syncUiSettings);
+
+function appendTerminalOutput(chunk: string): void {
+  const normalized = chunk
+    .replace(/\u001b\][^\u0007]*(\u0007|\u001b\\)/g, "")
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\u001b[@-Z\\-_]/g, "")
+    .replace(/[\uE000-\uF8FF\uFFFD]/g, "");
+
+  let content = terminalOutput.textContent || "";
+  for (const char of normalized) {
+    if (char === "\r") {
+      const lastNewline = content.lastIndexOf("\n");
+      content = lastNewline >= 0 ? content.slice(0, lastNewline + 1) : "";
+      continue;
+    }
+
+    if (char === "\b") {
+      if (content.length > 0 && content[content.length - 1] !== "\n") {
+        content = content.slice(0, -1);
+      }
+      continue;
+    }
+
+    if (char === "\u0007") {
+      continue;
+    }
+
+    const code = char.charCodeAt(0);
+    if (code < 32 && char !== "\n" && char !== "\t") {
+      continue;
+    }
+
+    content += char;
+  }
+
+  terminalOutput.textContent = content;
+  terminalOutput.scrollTop = terminalOutput.scrollHeight;
+}
+
+function getTerminalSizeEstimate(): { cols: number; rows: number } {
+  const width = terminalOutput.clientWidth || 880;
+  const height = terminalOutput.clientHeight || 220;
+  return {
+    cols: Math.max(60, Math.floor(width / 8.4)),
+    rows: Math.max(10, Math.floor(height / 19))
+  };
+}
+
+function setTerminalOpen(open: boolean): void {
+  terminalPanel.hidden = !open;
+  if (open) {
+    terminalInput.focus();
+  }
+}
+
+terminalToggle.addEventListener("click", async () => {
+  const opening = terminalPanel.hidden;
+  setTerminalOpen(opening);
+  if (!opening || terminalStarted) {
+    return;
+  }
+
+  const started = await window.cmdfindDesktop.terminalStart();
+  terminalStarted = started;
+  if (!started) {
+    appendTerminalOutput("[terminal could not start]\n");
+    return;
+  }
+  const size = getTerminalSizeEstimate();
+  await window.cmdfindDesktop.terminalResize(size.cols, size.rows);
+});
+
+terminalForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const command = terminalInput.value.trim();
+  if (!command) return;
+
+  if (!terminalStarted) {
+    const started = await window.cmdfindDesktop.terminalStart();
+    terminalStarted = started;
+    if (!started) {
+      appendTerminalOutput("[terminal could not start]\n");
+      return;
+    }
+  }
+
+  await window.cmdfindDesktop.terminalInput(`${command}\n`);
+  terminalHistory.push(command);
+  terminalHistoryIndex = terminalHistory.length;
+  terminalInput.value = "";
+});
+
+terminalInput.addEventListener("keydown", async (event) => {
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    if (!terminalHistory.length) return;
+    terminalHistoryIndex = Math.max(0, terminalHistoryIndex - 1);
+    terminalInput.value = terminalHistory[terminalHistoryIndex] || "";
+    terminalInput.setSelectionRange(terminalInput.value.length, terminalInput.value.length);
+    return;
+  }
+
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    if (!terminalHistory.length) return;
+    terminalHistoryIndex = Math.min(terminalHistory.length, terminalHistoryIndex + 1);
+    terminalInput.value = terminalHistory[terminalHistoryIndex] || "";
+    terminalInput.setSelectionRange(terminalInput.value.length, terminalInput.value.length);
+    return;
+  }
+
+  if (event.key.toLowerCase() === "c" && event.ctrlKey) {
+    event.preventDefault();
+    if (!terminalStarted) return;
+    await window.cmdfindDesktop.terminalInput("\u0003");
+  }
+});
+
+terminalClear.addEventListener("click", () => {
+  terminalOutput.textContent = "";
+});
+
+terminalStop.addEventListener("click", async () => {
+  await window.cmdfindDesktop.terminalStop();
+  terminalStarted = false;
+  appendTerminalOutput("[terminal stopped]\n");
+});
+
+window.addEventListener("resize", () => {
+  if (!terminalStarted) return;
+  const size = getTerminalSizeEstimate();
+  void window.cmdfindDesktop.terminalResize(size.cols, size.rows);
+});
 
 resultsEl.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
@@ -278,3 +451,6 @@ void window.cmdfindDesktop.getDefaultLanguage().then((lang) => {
 });
 
 applyUiSettings(readUiSettings());
+window.cmdfindDesktop.onTerminalOutput((chunk) => {
+  appendTerminalOutput(chunk);
+});

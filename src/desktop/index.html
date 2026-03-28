@@ -17,8 +17,13 @@
         --primary: #6ca5ff;
         --primary-strong: #4f8fff;
         --ok: #55d79d;
+        --bg-orb-a: #25335f;
+        --bg-orb-b: #2b2148;
+        --bg-bottom: #080d19;
         --radius: 14px;
         --radius-sm: 10px;
+        --terminal-height: 420px;
+        --terminal-font-size: 16px;
         --shadow: 0 20px 44px rgba(5, 9, 20, 0.48);
       }
 
@@ -34,14 +39,15 @@
         font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         color: var(--text);
         background:
-          radial-gradient(1000px 520px at -10% -20%, #25335f 0%, transparent 60%),
-          radial-gradient(1000px 520px at 110% -30%, #2b2148 0%, transparent 64%),
-          linear-gradient(180deg, #0a1020, #090e1b 45%, #080d19);
+          radial-gradient(1000px 520px at -10% -20%, var(--bg-orb-a) 0%, transparent 60%),
+          radial-gradient(1000px 520px at 110% -30%, var(--bg-orb-b) 0%, transparent 64%),
+          linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 74%, #000 26%) 45%, var(--bg-bottom));
       }
 
       .wrap {
         width: min(1200px, calc(100% - 44px));
         margin: 28px auto 34px;
+        zoom: var(--ui-scale, 1);
       }
 
       .hero {
@@ -93,6 +99,28 @@
         height: 19px;
       }
 
+      .tools {
+        display: inline-flex;
+        gap: 8px;
+      }
+
+      .terminal-toggle {
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(18, 28, 52, 0.86);
+        color: var(--text);
+      }
+
+      .terminal-toggle svg {
+        width: 18px;
+        height: 18px;
+      }
+
       .controls {
         display: grid;
         grid-template-columns: 2fr 1fr 1fr 1fr 0.8fr auto auto;
@@ -138,16 +166,16 @@
       }
 
       #searchBtn {
-        background: linear-gradient(145deg, #5f98ff, #4a84ef);
-        border: 1px solid rgba(165, 193, 255, 0.45);
+        background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 88%, #ffffff 12%), var(--primary-strong));
+        border: 1px solid color-mix(in srgb, var(--primary) 52%, #ffffff 48%);
         color: #f5f9ff;
       }
 
       #allBtn,
       #saveLangBtn,
       .copy-btn {
-        background: linear-gradient(145deg, #22345e, #1a294d);
-        border: 1px solid rgba(149, 176, 231, 0.34);
+        background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 22%, #1a294d), #1a294d);
+        border: 1px solid color-mix(in srgb, var(--primary) 36%, #ffffff 64%);
         color: #dce8ff;
       }
 
@@ -184,6 +212,94 @@
         margin-top: 16px;
         display: grid;
         gap: 12px;
+      }
+
+      .terminal-panel {
+        margin-top: 14px;
+        border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--line));
+        border-radius: calc(var(--radius) + 2px);
+        background:
+          radial-gradient(700px 260px at 12% -10%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 64%),
+          linear-gradient(170deg, rgba(16, 23, 44, 0.94), rgba(8, 12, 24, 0.97));
+        overflow: hidden;
+        box-shadow:
+          0 22px 44px rgba(3, 7, 16, 0.55),
+          inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .terminal-panel[hidden] {
+        display: none;
+      }
+
+      .terminal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-bottom: 1px solid color-mix(in srgb, var(--primary) 24%, var(--line));
+        background: linear-gradient(180deg, rgba(22, 31, 58, 0.82), rgba(14, 22, 43, 0.76));
+      }
+
+      .terminal-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .terminal-title {
+        margin: 0;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .terminal-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 3px 10px;
+        border: 1px solid color-mix(in srgb, var(--primary) 42%, #fff 58%);
+        background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 78%, #ffffff 22%), var(--primary-strong));
+        color: #f6fbff;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 28%, transparent);
+      }
+
+      .terminal-actions {
+        display: inline-flex;
+        gap: 8px;
+      }
+
+      .terminal-btn {
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      .terminal-output {
+        height: var(--terminal-height);
+        overflow: auto;
+        padding: 14px 14px 16px;
+        margin: 0;
+        font-size: var(--terminal-font-size);
+        line-height: 1.5;
+        white-space: pre-wrap;
+        color: #e8f1ff;
+        background:
+          radial-gradient(800px 240px at 80% -20%, rgba(108, 165, 255, 0.12), transparent 68%),
+          linear-gradient(180deg, rgba(6, 10, 22, 0.96), rgba(5, 9, 20, 0.98));
+      }
+
+      .terminal-form {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 10px 12px 12px;
+        border-top: 1px solid color-mix(in srgb, var(--primary) 24%, var(--line));
+        background: rgba(10, 16, 31, 0.82);
       }
 
       .card {
@@ -330,7 +446,11 @@
         --text: #ecf2ff;
         --muted: #afbdd9;
         --primary: #8cb3ff;
+        --primary-strong: #739fe8;
         --ok: #8be4bf;
+        --bg-orb-a: #2c3c5a;
+        --bg-orb-b: #233249;
+        --bg-bottom: #0b111b;
       }
 
       body[data-theme="graphite"] {
@@ -340,7 +460,81 @@
         --text: #f2f3f5;
         --muted: #babdc8;
         --primary: #9cb2d9;
+        --primary-strong: #899fcb;
         --ok: #8ad1b2;
+        --bg-orb-a: #3a3d47;
+        --bg-orb-b: #2b2e36;
+        --bg-bottom: #0a0b0d;
+      }
+
+      body[data-theme="sunset"] {
+        --bg: #171014;
+        --line: rgba(233, 176, 164, 0.24);
+        --line-strong: rgba(233, 176, 164, 0.45);
+        --text: #fff0ec;
+        --muted: #e7b7ab;
+        --primary: #f3957f;
+        --primary-strong: #e3777f;
+        --ok: #ffd187;
+        --bg-orb-a: #623146;
+        --bg-orb-b: #3d2232;
+        --bg-bottom: #130d12;
+      }
+
+      body[data-theme="emerald"] {
+        --bg: #0b1715;
+        --line: rgba(143, 220, 191, 0.24);
+        --line-strong: rgba(143, 220, 191, 0.45);
+        --text: #e8fff7;
+        --muted: #a4d9c7;
+        --primary: #57cfa4;
+        --primary-strong: #3db689;
+        --ok: #b9ffd4;
+        --bg-orb-a: #1d5b50;
+        --bg-orb-b: #174039;
+        --bg-bottom: #08110f;
+      }
+
+      body[data-theme="amber"] {
+        --bg: #18120b;
+        --line: rgba(245, 196, 124, 0.24);
+        --line-strong: rgba(245, 196, 124, 0.44);
+        --text: #fff4e5;
+        --muted: #e6c59a;
+        --primary: #f6b157;
+        --primary-strong: #e49837;
+        --ok: #ffe08e;
+        --bg-orb-a: #62422a;
+        --bg-orb-b: #4f3121;
+        --bg-bottom: #110c08;
+      }
+
+      body[data-theme="cyber"] {
+        --bg: #0a0d1c;
+        --line: rgba(137, 246, 255, 0.28);
+        --line-strong: rgba(137, 246, 255, 0.48);
+        --text: #e8fbff;
+        --muted: #9fd9e5;
+        --primary: #45dbff;
+        --primary-strong: #1cb6ff;
+        --ok: #73ffc8;
+        --bg-orb-a: #184d7d;
+        --bg-orb-b: #2f205f;
+        --bg-bottom: #080915;
+      }
+
+      body[data-theme="rose"] {
+        --bg: #170f19;
+        --line: rgba(234, 164, 226, 0.26);
+        --line-strong: rgba(234, 164, 226, 0.46);
+        --text: #fef0ff;
+        --muted: #dcb8df;
+        --primary: #dd84d8;
+        --primary-strong: #c467bf;
+        --ok: #ffd2ef;
+        --bg-orb-a: #5d2e5e;
+        --bg-orb-b: #3c2348;
+        --bg-bottom: #120b14;
       }
 
       @media (max-width: 1120px) {
@@ -383,14 +577,22 @@
             <h1 class="title">cmdfind desktop</h1>
             <p class="subtitle">Finde passende Befehle schneller und mit klarerer Oberfläche.</p>
           </div>
-          <button id="settingsToggle" class="settings-toggle" aria-label="Open settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"></path>
-              <path
-                d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 0 1-2.82 2.82l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .33 1.7 1.7 0 0 0-.77 1.5V21.4a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-.77-1.5 1.7 1.7 0 0 0-1-.33 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.82-2.82l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.33-1 1.7 1.7 0 0 0-1.5-.77H2.6a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-.77 1.7 1.7 0 0 0 .33-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.82-2.82l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.33 1.7 1.7 0 0 0 .77-1.5V2.6a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .77 1.5 1.7 1.7 0 0 0 1 .33 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.82 2.82l-.06.06A1.7 1.7 0 0 0 19.4 9c0 .36.12.7.33 1 .2.3.5.5.85.63.2.08.42.12.65.12h.17a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5.77c-.2.3-.33.64-.33 1Z">
-              </path>
-            </svg>
-          </button>
+          <div class="tools">
+            <button id="terminalToggle" class="terminal-toggle" aria-label="Open terminal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m4 7 4 4-4 4"></path>
+                <path d="M10 15h10"></path>
+              </svg>
+            </button>
+            <button id="settingsToggle" class="settings-toggle" aria-label="Open settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"></path>
+                <path
+                  d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 0 1-2.82 2.82l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .33 1.7 1.7 0 0 0-.77 1.5V21.4a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-.77-1.5 1.7 1.7 0 0 0-1-.33 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.82-2.82l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.33-1 1.7 1.7 0 0 0-1.5-.77H2.6a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-.77 1.7 1.7 0 0 0 .33-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.82-2.82l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.33 1.7 1.7 0 0 0 .77-1.5V2.6a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 .77 1.5 1.7 1.7 0 0 0 1 .33 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.82 2.82l-.06.06A1.7 1.7 0 0 0 19.4 9c0 .36.12.7.33 1 .2.3.5.5.85.63.2.08.42.12.65.12h.17a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5.77c-.2.3-.33.64-.33 1Z">
+                </path>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div class="controls">
@@ -427,6 +629,24 @@
         <div id="status" class="status"></div>
       </section>
 
+      <section id="terminalPanel" class="terminal-panel" hidden>
+        <div class="terminal-head">
+          <div class="terminal-brand">
+            <h2 class="terminal-title">Integrated Terminal</h2>
+            <span class="terminal-badge">CMDFIND</span>
+          </div>
+          <div class="terminal-actions">
+            <button id="terminalClear" class="terminal-btn">Clear</button>
+            <button id="terminalStop" class="terminal-btn">Stop</button>
+          </div>
+        </div>
+        <pre id="terminalOutput" class="terminal-output"></pre>
+        <form id="terminalForm" class="terminal-form">
+          <input id="terminalInput" type="text" placeholder="Type command and press Enter..." autocomplete="off" />
+          <button type="submit" id="terminalRun">Run</button>
+        </form>
+      </section>
+
       <section id="results" class="results"></section>
     </div>
 
@@ -442,6 +662,11 @@
             <option value="midnight">Midnight</option>
             <option value="slate">Slate</option>
             <option value="graphite">Graphite</option>
+            <option value="sunset">Sunset</option>
+            <option value="emerald">Emerald</option>
+            <option value="amber">Amber</option>
+            <option value="cyber">Cyber</option>
+            <option value="rose">Rose</option>
           </select>
           <div class="theme-preview">
             <span class="chip">Dark</span>
@@ -462,6 +687,16 @@
         <div class="setting">
           <label for="radiusScale">Rundungen</label>
           <input id="radiusScale" type="range" min="8" max="20" value="14" />
+        </div>
+
+        <div class="setting">
+          <label for="terminalHeight">Terminal-Höhe</label>
+          <input id="terminalHeight" type="range" min="260" max="620" value="420" />
+        </div>
+
+        <div class="setting">
+          <label for="terminalFontSize">Terminal-Schriftgröße</label>
+          <input id="terminalFontSize" type="range" min="13" max="24" value="16" />
         </div>
       </div>
     </aside>
