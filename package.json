@@ -2,6 +2,10 @@
   "name": "cmdfind",
   "version": "0.1.0",
   "description": "Find terminal commands from natural language (DE/EN) for Windows, Linux and macOS",
+  "author": {
+    "name": "indextorben",
+    "email": "indextorben@users.noreply.github.com"
+  },
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
@@ -60,7 +64,8 @@
         "deb",
         "tar.gz"
       ],
-      "category": "Development"
+      "category": "Development",
+      "maintainer": "indextorben <indextorben@users.noreply.github.com>"
     }
   },
   "dependencies": {
