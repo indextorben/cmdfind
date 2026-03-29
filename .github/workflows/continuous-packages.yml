@@ -107,12 +107,37 @@ jobs:
             --prerelease
 
       - name: Upload assets to continuous release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mapfile -d '' files < <(find release-assets -type f -print0)
-          if [ ${#files[@]} -eq 0 ]; then
+          echo "Downloaded assets:"
+          ls -la release-assets || true
+          echo "Installer files to upload:"
+          find release-assets -type f \( \
+            -name "*.exe" -o \
+            -name "*.zip" -o \
+            -name "*.dmg" -o \
+            -name "*.AppImage" -o \
+            -name "*.deb" -o \
+            -name "*.tar.gz" \
+          \) -print
+
+          upload_count=0
+          while IFS= read -r file; do
+            upload_count=$((upload_count + 1))
+            echo "Uploading: $file"
+            gh release upload continuous "$file" --clobber
+          done < <(find release-assets -type f \( \
+            -name "*.exe" -o \
+            -name "*.zip" -o \
+            -name "*.dmg" -o \
+            -name "*.AppImage" -o \
+            -name "*.deb" -o \
+            -name "*.tar.gz" \
+          \) | sort)
+
+          if [ "$upload_count" -eq 0 ]; then
             echo "No release assets found to upload."
             exit 1
           fi
-          gh release upload continuous "${files[@]}" --clobber
