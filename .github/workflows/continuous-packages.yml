@@ -27,18 +27,23 @@ jobs:
               release/linux/*.AppImage
               release/linux/*.deb
               release/linux/*.tar.gz
+              release/linux/latest-linux.yml
           - os: windows-latest
             target: win
             artifact_name: cmdfind-windows
             package_globs: |
               release/win/*.exe
               release/win/*.zip
+              release/win/*.blockmap
+              release/win/latest.yml
           - os: macos-latest
             target: mac
             artifact_name: cmdfind-macos
             package_globs: |
               release/mac/*.dmg
               release/mac/*.zip
+              release/mac/*.blockmap
+              release/mac/latest-mac.yml
 
     steps:
       - name: Checkout
@@ -180,7 +185,9 @@ jobs:
             -name "*.dmg" -o \
             -name "*.AppImage" -o \
             -name "*.deb" -o \
-            -name "*.tar.gz" \
+            -name "*.tar.gz" -o \
+            -name "*.yml" -o \
+            -name "*.blockmap" \
           \) -print
 
           upload_count=0
@@ -194,7 +201,9 @@ jobs:
             -name "*.dmg" -o \
             -name "*.AppImage" -o \
             -name "*.deb" -o \
-            -name "*.tar.gz" \
+            -name "*.tar.gz" -o \
+            -name "*.yml" -o \
+            -name "*.blockmap" \
           \) | sort)
 
           if [ "$upload_count" -eq 0 ]; then

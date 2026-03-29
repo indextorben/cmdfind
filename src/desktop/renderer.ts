@@ -24,6 +24,14 @@ type DesktopSearchResponse = {
   }>;
 };
 
+type UpdateState = {
+  status: "idle" | "checking" | "available" | "not-available" | "downloading" | "downloaded" | "error";
+  message: string;
+  currentVersion: string;
+  version?: string;
+  percent?: number;
+};
+
 declare global {
   interface Window {
     cmdfindDesktop: {
@@ -39,6 +47,10 @@ declare global {
       }) => Promise<DesktopSearchResponse>;
       getDefaultLanguage: () => Promise<"de" | "en" | null>;
       setDefaultLanguage: (language: "de" | "en") => Promise<boolean>;
+      updateGetState: () => Promise<UpdateState>;
+      updateCheck: () => Promise<boolean>;
+      updateDownload: () => Promise<boolean>;
+      updateInstall: () => Promise<boolean>;
       terminalStart: () => Promise<boolean>;
       terminalInput: (input: string) => Promise<boolean>;
       terminalResize: (cols: number, rows: number) => Promise<boolean>;
@@ -52,6 +64,7 @@ declare global {
         Array<{ value: string; label: string }>
       >;
       onTerminalOutput: (callback: (chunk: string) => void) => () => void;
+      onUpdateState: (callback: (state: UpdateState) => void) => () => void;
     };
   }
 }
@@ -70,6 +83,10 @@ const searchBtn = document.querySelector<HTMLButtonElement>("#searchBtn")!;
 const allBtn = document.querySelector<HTMLButtonElement>("#allBtn")!;
 const saveLangBtn = document.querySelector<HTMLButtonElement>("#saveLangBtn")!;
 const settingsToggle = document.querySelector<HTMLButtonElement>("#settingsToggle")!;
+const updateCheckBtn = document.querySelector<HTMLButtonElement>("#updateCheckBtn")!;
+const updateDownloadBtn = document.querySelector<HTMLButtonElement>("#updateDownloadBtn")!;
+const updateInstallBtn = document.querySelector<HTMLButtonElement>("#updateInstallBtn")!;
+const updateStatusEl = document.querySelector<HTMLDivElement>("#updateStatus")!;
 const settingsPanel = document.querySelector<HTMLElement>("#settingsPanel")!;
 const settingsClose = document.querySelector<HTMLButtonElement>("#settingsClose")!;
 const themeSelect = document.querySelector<HTMLSelectElement>("#themeSelect")!;
@@ -112,6 +129,26 @@ let terminalInputHadFocus = false;
 let suppressInlineAutocompleteOnce = false;
 let pendingInlineSuggestion: string | null = null;
 let terminalSuggestionRequestId = 0;
+
+function renderUpdateState(state: UpdateState): void {
+  updateStatusEl.textContent = state.message || `Version ${state.currentVersion}`;
+
+  updateCheckBtn.hidden = false;
+  updateDownloadBtn.hidden = true;
+  updateInstallBtn.hidden = true;
+  updateCheckBtn.disabled = state.status === "checking";
+
+  if (state.status === "available") {
+    updateDownloadBtn.hidden = false;
+    updateDownloadBtn.disabled = false;
+  } else if (state.status === "downloading") {
+    updateDownloadBtn.hidden = false;
+    updateDownloadBtn.disabled = true;
+  } else if (state.status === "downloaded") {
+    updateInstallBtn.hidden = false;
+    updateInstallBtn.disabled = false;
+  }
+}
 
 function renderInlineHint(): void {
   if (!pendingInlineSuggestion) {
@@ -314,6 +351,23 @@ searchBtn.addEventListener("click", () => {
 allBtn.addEventListener("click", () => {
   currentContextCheckbox.checked = false;
   void runSearch(true);
+});
+
+updateCheckBtn.addEventListener("click", async () => {
+  updateCheckBtn.disabled = true;
+  await window.cmdfindDesktop.updateCheck();
+  updateCheckBtn.disabled = false;
+});
+
+updateDownloadBtn.addEventListener("click", async () => {
+  updateDownloadBtn.disabled = true;
+  await window.cmdfindDesktop.updateDownload();
+  updateDownloadBtn.disabled = false;
+});
+
+updateInstallBtn.addEventListener("click", async () => {
+  updateInstallBtn.disabled = true;
+  await window.cmdfindDesktop.updateInstall();
 });
 
 queryInput.addEventListener("keydown", (event) => {
@@ -851,4 +905,10 @@ void window.cmdfindDesktop.getDefaultLanguage().then((lang) => {
 applyUiSettings(readUiSettings());
 window.cmdfindDesktop.onTerminalOutput((chunk) => {
   appendTerminalOutput(chunk);
+});
+window.cmdfindDesktop.onUpdateState((state) => {
+  renderUpdateState(state);
+});
+void window.cmdfindDesktop.updateGetState().then((state) => {
+  renderUpdateState(state);
 });

@@ -13,6 +13,10 @@ contextBridge.exposeInMainWorld("cmdfindDesktop", {
   }) => ipcRenderer.invoke("cmdfind:search", request),
   getDefaultLanguage: () => ipcRenderer.invoke("cmdfind:get-default-language"),
   setDefaultLanguage: (language: "de" | "en") => ipcRenderer.invoke("cmdfind:set-default-language", language),
+  updateGetState: () => ipcRenderer.invoke("cmdfind:update-get-state"),
+  updateCheck: () => ipcRenderer.invoke("cmdfind:update-check"),
+  updateDownload: () => ipcRenderer.invoke("cmdfind:update-download"),
+  updateInstall: () => ipcRenderer.invoke("cmdfind:update-install"),
   terminalStart: () => ipcRenderer.invoke("cmdfind:terminal-start"),
   terminalInput: (input: string) => ipcRenderer.invoke("cmdfind:terminal-input", input),
   terminalResize: (cols: number, rows: number) => ipcRenderer.invoke("cmdfind:terminal-resize", cols, rows),
@@ -23,5 +27,18 @@ contextBridge.exposeInMainWorld("cmdfindDesktop", {
     const listener = (_event: unknown, chunk: string) => callback(chunk);
     ipcRenderer.on("cmdfind:terminal-output", listener);
     return () => ipcRenderer.removeListener("cmdfind:terminal-output", listener);
+  },
+  onUpdateState: (
+    callback: (state: {
+      status: "idle" | "checking" | "available" | "not-available" | "downloading" | "downloaded" | "error";
+      message: string;
+      currentVersion: string;
+      version?: string;
+      percent?: number;
+    }) => void
+  ) => {
+    const listener = (_event: unknown, state: unknown) => callback(state as never);
+    ipcRenderer.on("cmdfind:update-state", listener);
+    return () => ipcRenderer.removeListener("cmdfind:update-state", listener);
   }
 });

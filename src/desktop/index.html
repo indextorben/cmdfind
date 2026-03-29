@@ -107,6 +107,34 @@
         height: 19px;
       }
 
+      .update-btn {
+        height: 42px;
+        padding: 0 12px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(18, 28, 52, 0.86);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .update-btn[hidden] {
+        display: none;
+      }
+
+      .update-row {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .update-status {
+        font-size: 12px;
+        color: #bdd0ff;
+      }
+
       .tools {
         display: inline-flex;
         gap: 8px;
@@ -730,6 +758,9 @@
             <p class="subtitle">Finde passende Befehle schneller und mit klarerer Oberfläche.</p>
           </div>
           <div class="tools">
+            <button id="updateCheckBtn" class="update-btn" aria-label="Check for updates">Update pruefen</button>
+            <button id="updateDownloadBtn" class="update-btn" aria-label="Download update" hidden>Update laden</button>
+            <button id="updateInstallBtn" class="update-btn" aria-label="Install update" hidden>Jetzt installieren</button>
             <button id="terminalToggle" class="terminal-toggle" aria-label="Open terminal">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="m4 7 4 4-4 4"></path>
@@ -779,6 +810,9 @@
         </div>
 
         <div id="status" class="status"></div>
+        <div class="update-row">
+          <div id="updateStatus" class="update-status">Version wird geladen...</div>
+        </div>
       </section>
 
       <section id="terminalPanel" class="terminal-panel" hidden>

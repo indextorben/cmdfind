@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain } from "electron";
+import { autoUpdater } from "electron-updater";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -30,6 +31,86 @@ type TerminalSession =
     };
 
 const terminalSessions = new Map<number, TerminalSession>();
+let mainWindow: BrowserWindow | null = null;
+let updaterInitialized = false;
+
+type UpdateState =
+  | { status: "idle"; message: string; currentVersion: string }
+  | { status: "checking"; message: string; currentVersion: string }
+  | { status: "available"; message: string; currentVersion: string; version: string }
+  | { status: "not-available"; message: string; currentVersion: string }
+  | { status: "downloading"; message: string; currentVersion: string; percent: number }
+  | { status: "downloaded"; message: string; currentVersion: string; version: string }
+  | { status: "error"; message: string; currentVersion: string };
+
+function sendUpdateState(state: UpdateState): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  mainWindow.webContents.send("cmdfind:update-state", state);
+}
+
+function setupAutoUpdater(): void {
+  if (updaterInitialized) {
+    return;
+  }
+  updaterInitialized = true;
+
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = true;
+
+  autoUpdater.on("checking-for-update", () => {
+    sendUpdateState({
+      status: "checking",
+      message: "Pruefe auf Updates...",
+      currentVersion: app.getVersion()
+    });
+  });
+
+  autoUpdater.on("update-available", (info) => {
+    sendUpdateState({
+      status: "available",
+      message: `Update verfuegbar: ${info.version}`,
+      currentVersion: app.getVersion(),
+      version: info.version
+    });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    sendUpdateState({
+      status: "not-available",
+      message: "Du hast bereits die neueste Version.",
+      currentVersion: app.getVersion()
+    });
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    sendUpdateState({
+      status: "downloading",
+      message: `Update wird geladen (${Math.round(progress.percent)}%).`,
+      currentVersion: app.getVersion(),
+      percent: progress.percent
+    });
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    sendUpdateState({
+      status: "downloaded",
+      message: `Update ${info.version} bereit. Neu starten zum Installieren.`,
+      currentVersion: app.getVersion(),
+      version: info.version
+    });
+  });
+
+  autoUpdater.on("error", (error) => {
+    sendUpdateState({
+      status: "error",
+      message: `Update-Fehler: ${error?.message ?? String(error)}`,
+      currentVersion: app.getVersion()
+    });
+  });
+}
 
 function resolveShellPath(): string {
   if (process.platform === "win32") {
@@ -179,6 +260,7 @@ function createWindow(): void {
       preload: path.join(__dirname, "preload.cjs")
     }
   });
+  mainWindow = window;
   const webContentsId = window.webContents.id;
 
   window.loadFile(path.join(__dirname, "index.html"));
@@ -193,6 +275,9 @@ function createWindow(): void {
       }
     }
     terminalSessions.delete(webContentsId);
+    if (mainWindow?.webContents.id === webContentsId) {
+      mainWindow = null;
+    }
   });
 }
 
@@ -482,8 +567,72 @@ ipcMain.handle("cmdfind:terminal-resize", (event, cols: number, rows: number) =>
   return true;
 });
 
+ipcMain.handle("cmdfind:update-get-state", () => {
+  return {
+    status: "idle",
+    message: `Version ${app.getVersion()}`,
+    currentVersion: app.getVersion()
+  } as UpdateState;
+});
+
+ipcMain.handle("cmdfind:update-check", async () => {
+  if (!app.isPackaged) {
+    sendUpdateState({
+      status: "error",
+      message: "Updates nur in der installierten App verfuegbar (nicht im Dev-Modus).",
+      currentVersion: app.getVersion()
+    });
+    return false;
+  }
+
+  try {
+    await autoUpdater.checkForUpdates();
+    return true;
+  } catch (error) {
+    sendUpdateState({
+      status: "error",
+      message: `Update-Check fehlgeschlagen: ${String(error)}`,
+      currentVersion: app.getVersion()
+    });
+    return false;
+  }
+});
+
+ipcMain.handle("cmdfind:update-download", async () => {
+  if (!app.isPackaged) {
+    return false;
+  }
+  try {
+    await autoUpdater.downloadUpdate();
+    return true;
+  } catch (error) {
+    sendUpdateState({
+      status: "error",
+      message: `Update-Download fehlgeschlagen: ${String(error)}`,
+      currentVersion: app.getVersion()
+    });
+    return false;
+  }
+});
+
+ipcMain.handle("cmdfind:update-install", () => {
+  if (!app.isPackaged) {
+    return false;
+  }
+  autoUpdater.quitAndInstall();
+  return true;
+});
+
 app.whenReady().then(() => {
+  setupAutoUpdater();
   createWindow();
+  if (app.isPackaged) {
+    setTimeout(() => {
+      void autoUpdater.checkForUpdates().catch(() => {
+        // handled via event/error channel
+      });
+    }, 3000);
+  }
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

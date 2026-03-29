@@ -68,9 +68,18 @@
       ],
       "category": "Development",
       "maintainer": "indextorben <indextorben@users.noreply.github.com>"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "indextorben",
+        "repo": "cmdfind",
+        "releaseType": "prerelease"
+      }
+    ]
   },
   "dependencies": {
+    "electron-updater": "^6.6.2",
     "node-pty": "^1.1.0"
   }
 }
