@@ -102,7 +102,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view continuous >/dev/null 2>&1 || gh release create continuous \
+          gh release view continuous -R ${{ github.repository }} >/dev/null 2>&1 || gh release create continuous -R ${{ github.repository }} \
             --title "cmdfind Continuous Desktop Build" \
             --notes "Auto-generated desktop packages." \
             --prerelease
@@ -111,7 +111,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release edit continuous \
+          gh release edit continuous -R ${{ github.repository }} \
             --title "cmdfind Continuous Desktop Build" \
             --notes "Auto-generated desktop packages from commit ${{ github.sha }}. Updated on every push to main." \
             --prerelease
@@ -137,7 +137,7 @@ jobs:
           while IFS= read -r file; do
             upload_count=$((upload_count + 1))
             echo "Uploading: $file"
-            gh release upload continuous "$file" --clobber
+            gh release upload continuous "$file" -R ${{ github.repository }} --clobber
           done < <(find release-assets -type f \( \
             -name "*.exe" -o \
             -name "*.zip" -o \
