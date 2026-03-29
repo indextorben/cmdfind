@@ -34,6 +34,7 @@
   "build": {
     "appId": "com.indextorben.cmdfind",
     "productName": "cmdfind",
+    "icon": "build/icons/icon.png",
     "asar": true,
     "directories": {
       "output": "release"
@@ -46,6 +47,7 @@
       "main": "dist/desktop/main.js"
     },
     "mac": {
+      "icon": "build/icons/icon.icns",
       "target": [
         "dmg",
         "zip"
@@ -55,12 +57,14 @@
       "gatekeeperAssess": false
     },
     "win": {
+      "icon": "build/icons/icon.png",
       "target": [
         "nsis",
         "zip"
       ]
     },
     "linux": {
+      "icon": "build/icons/icon.png",
       "target": [
         "AppImage",
         "deb",
