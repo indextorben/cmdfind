@@ -276,7 +276,7 @@ function createWindow(): void {
       }
     }
     terminalSessions.delete(webContentsId);
-    if (mainWindow?.webContents.id === webContentsId) {
+    if (mainWindow === window) {
       mainWindow = null;
     }
   });
