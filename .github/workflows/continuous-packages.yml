@@ -116,6 +116,21 @@ jobs:
             --notes "Auto-generated desktop packages from commit ${{ github.sha }}. Updated on every push to main." \
             --prerelease
 
+      - name: Remove old release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -t asset_ids < <(gh api repos/${{ github.repository }}/releases/tags/continuous --jq '.assets[].id')
+          if [ ${#asset_ids[@]} -eq 0 ]; then
+            echo "No previous assets to delete."
+            exit 0
+          fi
+          for id in "${asset_ids[@]}"; do
+            echo "Deleting old asset id: $id"
+            gh api -X DELETE repos/${{ github.repository }}/releases/assets/$id
+          done
+
       - name: Upload assets to continuous release
         shell: bash
         env:
