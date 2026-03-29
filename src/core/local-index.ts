@@ -1,5 +1,6 @@
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import type { Platform, Shell, SourceType, WarningLevel } from "./types.js";
 
@@ -124,9 +125,23 @@ function getCacheTtlMs(): number {
   return ttlSeconds * 1000;
 }
 
+function getDefaultBaseDir(): string {
+  const homeDir = os.homedir();
+  if (homeDir && homeDir !== path.parse(homeDir).root) {
+    return path.join(homeDir, ".cmdfind");
+  }
+
+  const appDataDir = process.env.APPDATA || process.env.XDG_CONFIG_HOME;
+  if (appDataDir) {
+    return path.join(appDataDir, "cmdfind");
+  }
+
+  return path.join(os.tmpdir(), ".cmdfind");
+}
+
 function getIndexFilePath(): string {
   const customDir = process.env.CMDFIND_INDEX_DIR;
-  const baseDir = customDir || path.join(process.cwd(), ".cmdfind");
+  const baseDir = customDir || getDefaultBaseDir();
   if (!existsSync(baseDir)) {
     mkdirSync(baseDir, { recursive: true });
   }
