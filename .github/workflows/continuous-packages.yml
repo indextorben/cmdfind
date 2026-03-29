@@ -23,19 +23,29 @@ jobs:
           - os: ubuntu-latest
             target: linux
             artifact_name: cmdfind-linux
+            package_globs: |
+              release/linux/*.AppImage
+              release/linux/*.deb
+              release/linux/*.tar.gz
           - os: windows-latest
             target: win
             artifact_name: cmdfind-windows
+            package_globs: |
+              release/win/*.exe
+              release/win/*.zip
           - os: macos-latest
             target: mac
             artifact_name: cmdfind-macos
+            package_globs: |
+              release/mac/*.dmg
+              release/mac/*.zip
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -59,10 +69,10 @@ jobs:
         run: npx electron-builder --publish never --${{ matrix.target }} --config.directories.output=release/${{ matrix.target }}
 
       - name: Upload package artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.artifact_name }}
-          path: release/${{ matrix.target }}/**/*
+          path: ${{ matrix.package_globs }}
           if-no-files-found: error
 
   publish-release:
@@ -72,7 +82,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: cmdfind-*
           merge-multiple: true
