@@ -79,6 +79,8 @@ jobs:
     name: Publish continuous release
     runs-on: ubuntu-latest
     needs: build-packages
+    permissions:
+      contents: write
 
     steps:
       - name: Download all artifacts
@@ -87,6 +89,14 @@ jobs:
           pattern: cmdfind-*
           merge-multiple: true
           path: release-assets
+
+      - name: Debug token permissions
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          gh api repos/${{ github.repository }} -q '.permissions'
 
       - name: Ensure continuous release exists
         env:
