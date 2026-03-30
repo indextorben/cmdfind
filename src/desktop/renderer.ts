@@ -295,7 +295,9 @@ function normalizeShortcut(shortcut: string): string {
   const normalized = new Set<string>();
   for (const part of raw) {
     const low = part.toLowerCase();
-    if (low === "cmd" || low === "command" || low === "meta") normalized.add("Meta");
+    if (low === "commandorcontrol" || low === "cmdorctrl") {
+      normalized.add(isMacPlatform() ? "Meta" : "Control");
+    } else if (low === "cmd" || low === "command" || low === "meta") normalized.add("Meta");
     else if (low === "ctrl" || low === "control" || low === "strg") normalized.add("Control");
     else if (low === "alt" || low === "option") normalized.add("Alt");
     else if (low === "shift" || low === "umschalt") normalized.add("Shift");
@@ -313,6 +315,7 @@ function shortcutToLabel(shortcut: string): string {
   return normalizeShortcut(shortcut)
     .split("+")
     .map((part) => {
+      if (part === "CommandOrControl") return isMacPlatform() ? "Cmd" : "Strg";
       if (part === "Meta") return isMacPlatform() ? "Cmd" : "Meta";
       if (part === "Control") return isMacPlatform() ? "Ctrl" : "Strg";
       if (part === "Alt") return "Alt";

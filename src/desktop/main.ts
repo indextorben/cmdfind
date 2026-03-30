@@ -36,6 +36,7 @@ let mainWindow: BrowserWindow | null = null;
 let quickSearchWindow: BrowserWindow | null = null;
 let updaterInitialized = false;
 let registeredGlobalShortcut: string | null = null;
+let appIsQuitting = false;
 const DEFAULT_GLOBAL_SEARCH_SHORTCUT = "CommandOrControl+B";
 
 type UpdateState =
@@ -268,6 +269,12 @@ function createWindow(): void {
   const webContentsId = window.webContents.id;
 
   window.loadFile(path.join(__dirname, "index.html"));
+
+  window.on("close", (event) => {
+    if (appIsQuitting) return;
+    event.preventDefault();
+    window.hide();
+  });
 
   window.on("closed", () => {
     const session = terminalSessions.get(webContentsId);
@@ -801,5 +808,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("will-quit", () => {
+  appIsQuitting = true;
   globalShortcut.unregisterAll();
 });
