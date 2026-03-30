@@ -755,7 +755,7 @@
         <div class="hero-top">
           <div>
             <h1 class="title">cmdfind desktop</h1>
-            <p class="subtitle">Finde passende Befehle schneller und mit klarerer Oberfläche.</p>
+            <p id="subtitleText" class="subtitle">Finde passende Befehle schneller und mit klarerer Oberfläche.</p>
           </div>
           <div class="tools">
             <button id="updateCheckBtn" class="update-btn" aria-label="Check for updates">Update pruefen</button>
@@ -803,22 +803,22 @@
         </div>
 
         <div class="row">
-          <label><input id="context" type="checkbox" checked /> prefer current context</label>
-          <label><input id="refresh" type="checkbox" /> refresh local index</label>
-          <label><input id="disableLocal" type="checkbox" /> disable local index</label>
+          <label><input id="context" type="checkbox" checked /> <span id="labelContext">prefer current context</span></label>
+          <label><input id="refresh" type="checkbox" /> <span id="labelRefresh">refresh local index</span></label>
+          <label><input id="disableLocal" type="checkbox" /> <span id="labelDisableLocal">disable local index</span></label>
           <button id="saveLangBtn" class="secondary">Save default language</button>
         </div>
 
         <div id="status" class="status"></div>
         <div class="update-row">
-          <div id="updateStatus" class="update-status">Version wird geladen...</div>
+        <div id="updateStatus" class="update-status">Version wird geladen...</div>
         </div>
       </section>
 
       <section id="terminalPanel" class="terminal-panel" hidden>
         <div class="terminal-head">
-          <div class="terminal-focus-left">ESC for terminal</div>
-          <div class="terminal-focus-center">New command session</div>
+          <div id="terminalHeadLeft" class="terminal-focus-left">ESC for terminal</div>
+          <div id="terminalHeadCenter" class="terminal-focus-center">New command session</div>
           <div class="terminal-actions">
             <button id="terminalClear" class="terminal-btn">Clear</button>
             <button id="terminalStop" class="terminal-btn">Stop</button>
@@ -838,12 +838,20 @@
 
     <aside id="settingsPanel" class="settings-panel" hidden>
       <div class="settings-head">
-        <h2 class="settings-title">Einstellungen</h2>
+        <h2 id="settingsTitle" class="settings-title">Einstellungen</h2>
         <button id="settingsClose" class="settings-close" aria-label="Close settings">×</button>
       </div>
       <div class="settings-grid">
         <div class="setting">
-          <label for="themeSelect">Theme</label>
+          <label id="uiLanguageLabel" for="uiLanguage">App-Sprache</label>
+          <select id="uiLanguage">
+            <option value="de">Deutsch</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label id="themeLabel" for="themeSelect">Theme</label>
           <select id="themeSelect">
             <option value="midnight">Midnight</option>
             <option value="slate">Slate</option>
@@ -855,33 +863,33 @@
             <option value="rose">Rose</option>
           </select>
           <div class="theme-preview">
-            <span class="chip">Dark</span>
-            <span class="chip">High Contrast</span>
+            <span id="chipDark" class="chip">Dark</span>
+            <span id="chipContrast" class="chip">High Contrast</span>
           </div>
         </div>
 
         <div class="setting">
-          <label for="accentColor">Akzentfarbe</label>
+          <label id="accentLabel" for="accentColor">Akzentfarbe</label>
           <input id="accentColor" type="color" value="#6ca5ff" />
         </div>
 
         <div class="setting">
-          <label for="uiScale">UI-Größe</label>
+          <label id="uiScaleLabel" for="uiScale">UI-Größe</label>
           <input id="uiScale" type="range" min="90" max="120" value="100" />
         </div>
 
         <div class="setting">
-          <label for="radiusScale">Rundungen</label>
+          <label id="radiusLabel" for="radiusScale">Rundungen</label>
           <input id="radiusScale" type="range" min="8" max="20" value="14" />
         </div>
 
         <div class="setting">
-          <label for="terminalHeight">Terminal-Höhe</label>
+          <label id="terminalHeightLabel" for="terminalHeight">Terminal-Höhe</label>
           <input id="terminalHeight" type="range" min="260" max="620" value="420" />
         </div>
 
         <div class="setting">
-          <label for="terminalFontSize">Terminal-Schriftgröße</label>
+          <label id="terminalFontLabel" for="terminalFontSize">Terminal-Schriftgröße</label>
           <input id="terminalFontSize" type="range" min="13" max="24" value="16" />
         </div>
       </div>

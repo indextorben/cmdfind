@@ -89,6 +89,7 @@ const updateInstallBtn = document.querySelector<HTMLButtonElement>("#updateInsta
 const updateStatusEl = document.querySelector<HTMLDivElement>("#updateStatus")!;
 const settingsPanel = document.querySelector<HTMLElement>("#settingsPanel")!;
 const settingsClose = document.querySelector<HTMLButtonElement>("#settingsClose")!;
+const uiLanguageSelect = document.querySelector<HTMLSelectElement>("#uiLanguage")!;
 const themeSelect = document.querySelector<HTMLSelectElement>("#themeSelect")!;
 const accentColor = document.querySelector<HTMLInputElement>("#accentColor")!;
 const uiScale = document.querySelector<HTMLInputElement>("#uiScale")!;
@@ -107,6 +108,7 @@ const terminalSuggest = document.querySelector<HTMLDivElement>("#terminalSuggest
 const terminalInlineHint = document.querySelector<HTMLDivElement>("#terminalInlineHint")!;
 
 type UiSettings = {
+  uiLanguage: "de" | "en";
   theme: "midnight" | "slate" | "graphite" | "sunset" | "emerald" | "amber" | "cyber" | "rose";
   accent: string;
   scale: number;
@@ -117,6 +119,123 @@ type UiSettings = {
 
 const uiSettingsKey = "cmdfind:desktop:ui-settings";
 const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite", "sunset", "emerald", "amber", "cyber", "rose"];
+let currentUiLanguage: "de" | "en" = "de";
+const i18n = {
+  de: {
+    subtitle: "Finde passende Befehle schneller und mit klarerer Oberfläche.",
+    updateCheck: "Update pruefen",
+    updateDownload: "Update laden",
+    updateInstall: "Jetzt installieren",
+    search: "Suchen",
+    allLocal: "Alle lokal",
+    context: "aktuellen Kontext bevorzugen",
+    refresh: "lokalen Index neu laden",
+    disableLocal: "lokalen Index deaktivieren",
+    saveLanguage: "Standardsprache speichern",
+    statusLoadingVersion: "Version wird geladen...",
+    terminalHeadLeft: "ESC fuer Terminal",
+    terminalHeadCenter: "Neue Befehlssitzung",
+    terminalClear: "Leeren",
+    terminalStop: "Stop",
+    terminalRun: "Ausfuehren",
+    terminalPlaceholder: "Befehl eingeben und Enter druecken...",
+    queryPlaceholder: "Befehl suchen... z. B. Prozess auf Port 3000",
+    settingsTitle: "Einstellungen",
+    uiLanguageLabel: "App-Sprache",
+    themeLabel: "Theme",
+    chipDark: "Dunkel",
+    chipContrast: "Hoher Kontrast",
+    accentLabel: "Akzentfarbe",
+    uiScaleLabel: "UI-Groesse",
+    radiusLabel: "Rundungen",
+    terminalHeightLabel: "Terminal-Hoehe",
+    terminalFontLabel: "Terminal-Schriftgroesse",
+    suggestionPrefix: "Vorschlag:",
+    suggestionApply: "Tab zum Uebernehmen",
+    saveLanguageNeedPick: "Bitte de oder en auswaehlen, um die Standardsprache zu speichern.",
+    saveLanguageSaved: "Standardsprache gespeichert:",
+    enterQuery: "Bitte Suchbegriff eingeben.",
+    searching: "Suche laeuft...",
+    noResults: "Keine Ergebnisse.",
+    copyFailed: "Kopieren fehlgeschlagen."
+  },
+  en: {
+    subtitle: "Find matching commands faster with a cleaner interface.",
+    updateCheck: "Check update",
+    updateDownload: "Download update",
+    updateInstall: "Install now",
+    search: "Search",
+    allLocal: "All Local",
+    context: "prefer current context",
+    refresh: "refresh local index",
+    disableLocal: "disable local index",
+    saveLanguage: "Save default language",
+    statusLoadingVersion: "Loading version...",
+    terminalHeadLeft: "ESC for terminal",
+    terminalHeadCenter: "New command session",
+    terminalClear: "Clear",
+    terminalStop: "Stop",
+    terminalRun: "Run",
+    terminalPlaceholder: "Type command and press Enter...",
+    queryPlaceholder: "Search command... e.g. process on port 3000",
+    settingsTitle: "Settings",
+    uiLanguageLabel: "App language",
+    themeLabel: "Theme",
+    chipDark: "Dark",
+    chipContrast: "High Contrast",
+    accentLabel: "Accent color",
+    uiScaleLabel: "UI size",
+    radiusLabel: "Radius",
+    terminalHeightLabel: "Terminal height",
+    terminalFontLabel: "Terminal font size",
+    suggestionPrefix: "Suggestion:",
+    suggestionApply: "Tab to apply",
+    saveLanguageNeedPick: "Select de or en to save default language.",
+    saveLanguageSaved: "Saved default language:",
+    enterQuery: "Enter a query.",
+    searching: "Searching...",
+    noResults: "No results.",
+    copyFailed: "Copy failed."
+  }
+} as const;
+
+function t(key: keyof typeof i18n.de): string {
+  return i18n[currentUiLanguage][key];
+}
+
+function applyUiLanguage(lang: "de" | "en"): void {
+  currentUiLanguage = lang;
+  (document.getElementById("subtitleText") as HTMLElement | null)?.replaceChildren(t("subtitle"));
+  updateCheckBtn.textContent = t("updateCheck");
+  updateDownloadBtn.textContent = t("updateDownload");
+  updateInstallBtn.textContent = t("updateInstall");
+  searchBtn.textContent = t("search");
+  allBtn.textContent = t("allLocal");
+  (document.getElementById("labelContext") as HTMLElement | null)?.replaceChildren(t("context"));
+  (document.getElementById("labelRefresh") as HTMLElement | null)?.replaceChildren(t("refresh"));
+  (document.getElementById("labelDisableLocal") as HTMLElement | null)?.replaceChildren(t("disableLocal"));
+  saveLangBtn.textContent = t("saveLanguage");
+  if (!updateStatusEl.textContent || updateStatusEl.textContent === i18n.de.statusLoadingVersion || updateStatusEl.textContent === i18n.en.statusLoadingVersion) {
+    updateStatusEl.textContent = t("statusLoadingVersion");
+  }
+  (document.getElementById("terminalHeadLeft") as HTMLElement | null)?.replaceChildren(t("terminalHeadLeft"));
+  (document.getElementById("terminalHeadCenter") as HTMLElement | null)?.replaceChildren(t("terminalHeadCenter"));
+  terminalClear.textContent = t("terminalClear");
+  terminalStop.textContent = t("terminalStop");
+  terminalRun.textContent = t("terminalRun");
+  terminalInput.placeholder = t("terminalPlaceholder");
+  queryInput.placeholder = t("queryPlaceholder");
+  (document.getElementById("settingsTitle") as HTMLElement | null)?.replaceChildren(t("settingsTitle"));
+  (document.getElementById("uiLanguageLabel") as HTMLElement | null)?.replaceChildren(t("uiLanguageLabel"));
+  (document.getElementById("themeLabel") as HTMLElement | null)?.replaceChildren(t("themeLabel"));
+  (document.getElementById("chipDark") as HTMLElement | null)?.replaceChildren(t("chipDark"));
+  (document.getElementById("chipContrast") as HTMLElement | null)?.replaceChildren(t("chipContrast"));
+  (document.getElementById("accentLabel") as HTMLElement | null)?.replaceChildren(t("accentLabel"));
+  (document.getElementById("uiScaleLabel") as HTMLElement | null)?.replaceChildren(t("uiScaleLabel"));
+  (document.getElementById("radiusLabel") as HTMLElement | null)?.replaceChildren(t("radiusLabel"));
+  (document.getElementById("terminalHeightLabel") as HTMLElement | null)?.replaceChildren(t("terminalHeightLabel"));
+  (document.getElementById("terminalFontLabel") as HTMLElement | null)?.replaceChildren(t("terminalFontLabel"));
+}
 let terminalStarted = false;
 const terminalHistory: string[] = [];
 let terminalHistoryIndex = -1;
@@ -155,7 +274,7 @@ function renderInlineHint(): void {
     terminalInlineHint.textContent = "";
     return;
   }
-  terminalInlineHint.textContent = `Vorschlag: ${pendingInlineSuggestion}  |  Shift zum Übernehmen`;
+  terminalInlineHint.textContent = `${t("suggestionPrefix")} ${pendingInlineSuggestion}  |  ${t("suggestionApply")}`;
 }
 
 function updateTerminalCurrentDirHintFromOutput(plainOutput: string): void {
@@ -212,10 +331,19 @@ function readUiSettings(): UiSettings {
   try {
     const raw = localStorage.getItem(uiSettingsKey);
     if (!raw) {
-      return { theme: "midnight", accent: "#6ca5ff", scale: 100, radius: 14, terminalHeight: 420, terminalFontSize: 16 };
+      return {
+        uiLanguage: "de",
+        theme: "midnight",
+        accent: "#6ca5ff",
+        scale: 100,
+        radius: 14,
+        terminalHeight: 420,
+        terminalFontSize: 16
+      };
     }
     const parsed = JSON.parse(raw) as Partial<UiSettings>;
     return {
+      uiLanguage: parsed.uiLanguage === "en" ? "en" : "de",
       theme: supportedThemes.includes(parsed.theme as UiSettings["theme"])
         ? (parsed.theme as UiSettings["theme"])
         : "midnight",
@@ -226,7 +354,15 @@ function readUiSettings(): UiSettings {
       terminalFontSize: typeof parsed.terminalFontSize === "number" ? parsed.terminalFontSize : 16
     };
   } catch {
-    return { theme: "midnight", accent: "#6ca5ff", scale: 100, radius: 14, terminalHeight: 420, terminalFontSize: 16 };
+    return {
+      uiLanguage: "de",
+      theme: "midnight",
+      accent: "#6ca5ff",
+      scale: 100,
+      radius: 14,
+      terminalHeight: 420,
+      terminalFontSize: 16
+    };
   }
 }
 
@@ -235,6 +371,7 @@ function saveUiSettings(settings: UiSettings): void {
 }
 
 function applyUiSettings(settings: UiSettings): void {
+  applyUiLanguage(settings.uiLanguage);
   document.body.dataset.theme = settings.theme;
   if (settings.theme === "midnight") {
     delete document.body.dataset.theme;
@@ -252,6 +389,7 @@ function applyUiSettings(settings: UiSettings): void {
   root.style.setProperty("--terminal-height", `${clampedTerminalHeight}px`);
   root.style.setProperty("--terminal-font-size", `${clampedTerminalFontSize}px`);
 
+  uiLanguageSelect.value = settings.uiLanguage;
   themeSelect.value = settings.theme;
   accentColor.value = settings.accent;
   uiScale.value = String(clampedScale);
@@ -278,7 +416,7 @@ function render(response: DesktopSearchResponse): void {
   statusEl.textContent = `Context: ${response.context.platform}/${response.context.shell} | Lang: ${response.context.language}`;
 
   if (response.results.length === 0) {
-    resultsEl.innerHTML = '<div class="empty">No results.</div>';
+    resultsEl.innerHTML = `<div class="empty">${escapeHtml(t("noResults"))}</div>`;
     return;
   }
 
@@ -309,20 +447,20 @@ async function copyCommand(command: string): Promise<void> {
     await navigator.clipboard.writeText(command);
     statusEl.textContent = `Copied: ${command}`;
   } catch {
-    statusEl.textContent = "Copy failed.";
+    statusEl.textContent = t("copyFailed");
   }
 }
 
 async function runSearch(forceAll = false): Promise<void> {
   const query = forceAll ? "all" : queryInput.value.trim();
   if (!query) {
-    statusEl.textContent = "Enter a query.";
+    statusEl.textContent = t("enterQuery");
     return;
   }
 
   searchBtn.disabled = true;
   allBtn.disabled = true;
-  statusEl.textContent = "Searching...";
+  statusEl.textContent = t("searching");
 
   try {
     const response = await window.cmdfindDesktop.search({
@@ -406,11 +544,11 @@ for (const field of quickSettingsFields) {
 saveLangBtn.addEventListener("click", async () => {
   const selected = langSelect.value as "de" | "en" | "auto";
   if (selected === "auto") {
-    statusEl.textContent = "Select de or en to save default language.";
+    statusEl.textContent = t("saveLanguageNeedPick");
     return;
   }
   await window.cmdfindDesktop.setDefaultLanguage(selected);
-  statusEl.textContent = `Saved default language: ${selected}`;
+  statusEl.textContent = `${t("saveLanguageSaved")} ${selected}`;
 });
 
 function setSettingsOpen(open: boolean): void {
@@ -444,6 +582,7 @@ document.addEventListener("click", (event) => {
 
 function syncUiSettings(): void {
   const settings: UiSettings = {
+    uiLanguage: uiLanguageSelect.value === "en" ? "en" : "de",
     theme: themeSelect.value as UiSettings["theme"],
     accent: accentColor.value,
     scale: Number(uiScale.value),
@@ -455,6 +594,7 @@ function syncUiSettings(): void {
   saveUiSettings(settings);
 }
 
+uiLanguageSelect.addEventListener("change", syncUiSettings);
 themeSelect.addEventListener("change", syncUiSettings);
 accentColor.addEventListener("input", syncUiSettings);
 uiScale.addEventListener("input", syncUiSettings);
