@@ -166,8 +166,6 @@ const i18n = {
     terminalFontLabel: "Terminal-Schriftgröße",
     systemTitle: "System",
     updatesLabel: "Updates",
-    terminalLabel: "Terminal",
-    terminalOpen: "Terminal öffnen",
     readmeTitle: "README: So funktioniert cmdfind",
     suggestionPrefix: "Vorschlag:",
     suggestionApply: "Tab zum Übernehmen",
@@ -217,8 +215,6 @@ const i18n = {
     terminalFontLabel: "Terminal font size",
     systemTitle: "System",
     updatesLabel: "Updates",
-    terminalLabel: "Terminal",
-    terminalOpen: "Open terminal",
     readmeTitle: "README: How cmdfind works",
     suggestionPrefix: "Suggestion:",
     suggestionApply: "Tab to apply",
@@ -314,8 +310,6 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("terminalFontLabel") as HTMLElement | null)?.replaceChildren(t("terminalFontLabel"));
   (document.getElementById("systemTitle") as HTMLElement | null)?.replaceChildren(t("systemTitle"));
   (document.getElementById("updatesLabel") as HTMLElement | null)?.replaceChildren(t("updatesLabel"));
-  (document.getElementById("terminalLabel") as HTMLElement | null)?.replaceChildren(t("terminalLabel"));
-  terminalToggle.textContent = t("terminalOpen");
   readmeTitle.replaceChildren(t("readmeTitle"));
   readmeContent.innerHTML = getReadmeHtml(lang);
 }

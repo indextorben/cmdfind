@@ -815,6 +815,12 @@
             <p id="subtitleText" class="subtitle">Finde passende Befehle schneller und mit klarerer Oberfläche.</p>
           </div>
           <div class="tools">
+            <button id="terminalToggle" class="terminal-toggle" aria-label="Open terminal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m4 7 4 4-4 4"></path>
+                <path d="M10 15h10"></path>
+              </svg>
+            </button>
             <button id="settingsToggle" class="settings-toggle" aria-label="Open settings">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"></path>
@@ -950,10 +956,6 @@
               <button id="updateInstallBtn" class="update-btn" aria-label="Install update" hidden>Jetzt installieren</button>
             </div>
             <div id="updateStatus" class="update-status">Version wird geladen...</div>
-          </div>
-          <div class="setting">
-            <label id="terminalLabel" for="terminalToggle">Terminal</label>
-            <button id="terminalToggle" class="secondary">Terminal öffnen</button>
           </div>
         </div>
 
