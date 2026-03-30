@@ -211,7 +211,10 @@
       #favoritesBtn,
       #exportFavoritesBtn,
       #saveLangBtn,
-      .copy-btn {
+      .copy-btn,
+      .run-btn,
+      .history-chip,
+      .history-clear {
         background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 22%, #1a294d), #1a294d);
         border: 1px solid color-mix(in srgb, var(--primary) 36%, #ffffff 64%);
         color: #dce8ff;
@@ -540,6 +543,11 @@
         padding: 8px 10px;
       }
 
+      .run-btn {
+        min-width: 66px;
+        border-radius: 9px;
+      }
+
       .note {
         margin-top: 8px;
         color: #cfdaf5;
@@ -549,6 +557,53 @@
         margin-top: 7px;
         color: var(--muted);
         font-size: 12px;
+      }
+
+      .search-history {
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px;
+        background: rgba(10, 15, 28, 0.54);
+      }
+
+      .search-history[hidden] {
+        display: none;
+      }
+
+      .history-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+
+      .history-title {
+        font-size: 12px;
+        color: #b9c9ed;
+      }
+
+      .history-clear {
+        font-size: 11px;
+        padding: 6px 9px;
+        border-radius: 8px;
+      }
+
+      .history-list {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .history-chip {
+        font-size: 12px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        max-width: 280px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .empty {
@@ -866,6 +921,13 @@
         </div>
 
         <div id="status" class="status"></div>
+        <div id="searchHistoryWrap" class="search-history" hidden>
+          <div class="history-head">
+            <span id="historyTitle" class="history-title">Suchverlauf</span>
+            <button id="historyClearBtn" type="button" class="history-clear">Leeren</button>
+          </div>
+          <div id="searchHistoryList" class="history-list"></div>
+        </div>
       </section>
 
       <section id="terminalPanel" class="terminal-panel" hidden>

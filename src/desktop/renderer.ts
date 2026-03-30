@@ -84,6 +84,10 @@ const allBtn = document.querySelector<HTMLButtonElement>("#allBtn")!;
 const favoritesBtn = document.querySelector<HTMLButtonElement>("#favoritesBtn")!;
 const exportFavoritesBtn = document.querySelector<HTMLButtonElement>("#exportFavoritesBtn")!;
 const saveLangBtn = document.querySelector<HTMLButtonElement>("#saveLangBtn")!;
+const searchHistoryWrap = document.querySelector<HTMLDivElement>("#searchHistoryWrap")!;
+const searchHistoryList = document.querySelector<HTMLDivElement>("#searchHistoryList")!;
+const historyTitle = document.querySelector<HTMLSpanElement>("#historyTitle")!;
+const historyClearBtn = document.querySelector<HTMLButtonElement>("#historyClearBtn")!;
 const settingsToggle = document.querySelector<HTMLButtonElement>("#settingsToggle")!;
 const updateCheckBtn = document.querySelector<HTMLButtonElement>("#updateCheckBtn")!;
 const updateDownloadBtn = document.querySelector<HTMLButtonElement>("#updateDownloadBtn")!;
@@ -128,9 +132,9 @@ type FavoriteItem = {
 
 const uiSettingsKey = "cmdfind:desktop:ui-settings";
 const favoritesKey = "cmdfind:desktop:favorites";
+const searchHistoryKey = "cmdfind:desktop:search-history";
 const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite", "sunset", "emerald", "amber", "cyber", "rose"];
 let currentUiLanguage: "de" | "en" = "de";
-let lastSearchResponse: DesktopSearchResponse | null = null;
 const renderedEntriesByKey = new Map<string, DesktopSearchResponse["results"][number]["entry"]>();
 const i18n = {
   de: {
@@ -142,6 +146,9 @@ const i18n = {
     allLocal: "Alle lokal",
     favorites: "Favoriten",
     exportFavorites: "Export",
+    historyTitle: "Suchverlauf",
+    historyClear: "Leeren",
+    runInTerminal: "Ausführen",
     context: "aktuellen Kontext bevorzugen",
     refresh: "lokalen Index neu laden",
     disableLocal: "lokalen Index deaktivieren",
@@ -177,6 +184,8 @@ const i18n = {
     favoriteRemove: "Aus Favoriten entfernt",
     favoritesExported: "Favoriten exportiert:",
     favoritesExportEmpty: "Keine Favoriten zum Exportieren vorhanden.",
+    ranInTerminal: "Im Terminal ausgeführt",
+    terminalStartFailed: "Terminal konnte nicht gestartet werden.",
     enterQuery: "Bitte Suchbegriff eingeben.",
     searching: "Suche läuft...",
     noResults: "Keine Ergebnisse.",
@@ -191,6 +200,9 @@ const i18n = {
     allLocal: "All Local",
     favorites: "Favorites",
     exportFavorites: "Export",
+    historyTitle: "Search history",
+    historyClear: "Clear",
+    runInTerminal: "Run",
     context: "prefer current context",
     refresh: "refresh local index",
     disableLocal: "disable local index",
@@ -226,6 +238,8 @@ const i18n = {
     favoriteRemove: "Removed from favorites",
     favoritesExported: "Favorites exported:",
     favoritesExportEmpty: "No favorites to export.",
+    ranInTerminal: "Executed in terminal",
+    terminalStartFailed: "Terminal could not start.",
     enterQuery: "Enter a query.",
     searching: "Searching...",
     noResults: "No results.",
@@ -284,6 +298,8 @@ function applyUiLanguage(lang: "de" | "en"): void {
   allBtn.textContent = t("allLocal");
   favoritesBtn.textContent = t("favorites");
   exportFavoritesBtn.textContent = t("exportFavorites");
+  historyTitle.textContent = t("historyTitle");
+  historyClearBtn.textContent = t("historyClear");
   (document.getElementById("labelContext") as HTMLElement | null)?.replaceChildren(t("context"));
   (document.getElementById("labelRefresh") as HTMLElement | null)?.replaceChildren(t("refresh"));
   (document.getElementById("labelDisableLocal") as HTMLElement | null)?.replaceChildren(t("disableLocal"));
@@ -312,6 +328,7 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("updatesLabel") as HTMLElement | null)?.replaceChildren(t("updatesLabel"));
   readmeTitle.replaceChildren(t("readmeTitle"));
   readmeContent.innerHTML = getReadmeHtml(lang);
+  renderSearchHistory();
 }
 let terminalStarted = false;
 const terminalHistory: string[] = [];
@@ -509,6 +526,48 @@ function saveFavorites(items: FavoriteItem[]): void {
   localStorage.setItem(favoritesKey, JSON.stringify(items));
 }
 
+function readSearchHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(searchHistoryKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as string[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => typeof item === "string" && item.trim().length > 0).slice(0, 12);
+  } catch {
+    return [];
+  }
+}
+
+function saveSearchHistory(items: string[]): void {
+  localStorage.setItem(searchHistoryKey, JSON.stringify(items.slice(0, 12)));
+}
+
+function pushSearchHistory(query: string): void {
+  const clean = query.trim();
+  if (!clean) return;
+  const existing = readSearchHistory().filter((item) => item.toLowerCase() !== clean.toLowerCase());
+  existing.unshift(clean);
+  saveSearchHistory(existing);
+}
+
+function clearSearchHistory(): void {
+  localStorage.removeItem(searchHistoryKey);
+  renderSearchHistory();
+}
+
+function renderSearchHistory(): void {
+  const history = readSearchHistory();
+  if (!history.length) {
+    searchHistoryWrap.hidden = true;
+    searchHistoryList.innerHTML = "";
+    return;
+  }
+  searchHistoryWrap.hidden = false;
+  searchHistoryList.innerHTML = history
+    .map((item) => `<button type="button" class="history-chip" data-query="${escapeHtml(item)}">${escapeHtml(item)}</button>`)
+    .join("");
+}
+
 function isFavorite(entry: DesktopSearchResponse["results"][number]["entry"]): boolean {
   const key = favoriteKeyFor(entry);
   return readFavorites().some((item) => favoriteKeyFor(item.entry) === key);
@@ -554,6 +613,7 @@ function renderEntries(
         <div class="command-row">
           <div class="command">${escapeHtml(entry.command)}</div>
           <button class="copy-btn" data-cmd="${escapeHtml(entry.command)}">Copy</button>
+          <button class="run-btn" data-run-cmd="${escapeHtml(entry.command)}">${escapeHtml(t("runInTerminal"))}</button>
           <button class="favorite-btn" data-fav-key="${escapeHtml(favoriteKeyFor(entry))}" aria-label="Favorite">${activeFavorite ? "★" : "☆"}</button>
         </div>
         <div class="note">${escapeHtml(note)}</div>
@@ -569,12 +629,28 @@ function renderEntries(
 }
 
 function render(response: DesktopSearchResponse): void {
-  lastSearchResponse = response;
   renderEntries(
     response.results.map((item) => item.entry),
     response.context.language,
     `Context: ${response.context.platform}/${response.context.shell} | Lang: ${response.context.language}`
   );
+}
+
+async function runCommandInTerminal(command: string): Promise<void> {
+  if (!command.trim()) return;
+  setTerminalOpen(true);
+  if (!terminalStarted) {
+    const started = await window.cmdfindDesktop.terminalStart();
+    terminalStarted = started;
+    if (!started) {
+      statusEl.textContent = t("terminalStartFailed");
+      return;
+    }
+    const size = getTerminalSizeEstimate();
+    await window.cmdfindDesktop.terminalResize(size.cols, size.rows);
+  }
+  await window.cmdfindDesktop.terminalInput(`${command}\n`);
+  statusEl.textContent = `${t("ranInTerminal")}: ${command}`;
 }
 
 async function copyCommand(command: string): Promise<void> {
@@ -598,6 +674,10 @@ async function runSearch(forceAll = false): Promise<void> {
   statusEl.textContent = t("searching");
 
   try {
+    if (!forceAll) {
+      pushSearchHistory(query);
+      renderSearchHistory();
+    }
     const response = await window.cmdfindDesktop.search({
       query,
       language: langSelect.value as "de" | "en" | "auto",
@@ -683,6 +763,20 @@ queryInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     void runSearch(false);
   }
+});
+
+searchHistoryList.addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  const btn = target.closest<HTMLButtonElement>(".history-chip");
+  if (!btn) return;
+  const q = btn.getAttribute("data-query");
+  if (!q) return;
+  queryInput.value = q;
+  void runSearch(false);
+});
+
+historyClearBtn.addEventListener("click", () => {
+  clearSearchHistory();
 });
 
 for (const field of quickSettingsFields) {
@@ -1197,6 +1291,13 @@ window.addEventListener("resize", () => {
 
 resultsEl.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
+  if (target.classList.contains("run-btn")) {
+    const cmd = target.getAttribute("data-run-cmd");
+    if (!cmd) return;
+    void runCommandInTerminal(cmd);
+    return;
+  }
+
   if (target.classList.contains("copy-btn")) {
     const cmd = target.getAttribute("data-cmd");
     if (!cmd) return;
@@ -1222,6 +1323,7 @@ void window.cmdfindDesktop.getDefaultLanguage().then((lang) => {
 });
 
 applyUiSettings(readUiSettings());
+renderSearchHistory();
 window.cmdfindDesktop.onTerminalOutput((chunk) => {
   appendTerminalOutput(chunk);
 });
