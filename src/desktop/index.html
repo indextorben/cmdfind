@@ -616,16 +616,18 @@
 
       .settings-panel {
         position: fixed;
-        top: 24px;
-        right: 24px;
-        width: min(380px, calc(100vw - 30px));
+        top: 30px;
+        right: 34px;
+        width: min(560px, calc(100vw - 84px));
+        max-height: calc(100vh - 72px);
         border: 1px solid var(--line);
         border-radius: 14px;
         background: rgba(13, 20, 38, 0.96);
         backdrop-filter: blur(14px);
         box-shadow: var(--shadow);
-        padding: 14px;
+        padding: 18px;
         z-index: 30;
+        overflow-y: auto;
       }
 
       .settings-panel[hidden] {
@@ -851,8 +853,10 @@
 
         .settings-panel {
           top: auto;
-          right: 12px;
-          bottom: 12px;
+          right: 16px;
+          bottom: 16px;
+          width: calc(100vw - 32px);
+          max-height: calc(100vh - 32px);
         }
 
         .controls {
