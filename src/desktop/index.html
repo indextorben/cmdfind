@@ -208,6 +208,8 @@
       }
 
       #allBtn,
+      #favoritesBtn,
+      #exportFavoritesBtn,
       #saveLangBtn,
       .copy-btn {
         background: linear-gradient(145deg, color-mix(in srgb, var(--primary) 22%, #1a294d), #1a294d);
@@ -530,6 +532,14 @@
         border-radius: 9px;
       }
 
+      .favorite-btn {
+        min-width: 46px;
+        border-radius: 9px;
+        font-size: 17px;
+        line-height: 1;
+        padding: 8px 10px;
+      }
+
       .note {
         margin-top: 8px;
         color: #cfdaf5;
@@ -838,6 +848,8 @@
           <input id="limit" type="number" min="1" value="20" />
           <button id="searchBtn">Search</button>
           <button id="allBtn" class="secondary">All Local</button>
+          <button id="favoritesBtn" class="secondary">Favoriten</button>
+          <button id="exportFavoritesBtn" class="secondary">Export</button>
         </div>
 
         <div class="row">

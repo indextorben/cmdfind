@@ -81,6 +81,8 @@ const resultsEl = document.querySelector<HTMLDivElement>("#results")!;
 const statusEl = document.querySelector<HTMLDivElement>("#status")!;
 const searchBtn = document.querySelector<HTMLButtonElement>("#searchBtn")!;
 const allBtn = document.querySelector<HTMLButtonElement>("#allBtn")!;
+const favoritesBtn = document.querySelector<HTMLButtonElement>("#favoritesBtn")!;
+const exportFavoritesBtn = document.querySelector<HTMLButtonElement>("#exportFavoritesBtn")!;
 const saveLangBtn = document.querySelector<HTMLButtonElement>("#saveLangBtn")!;
 const settingsToggle = document.querySelector<HTMLButtonElement>("#settingsToggle")!;
 const updateCheckBtn = document.querySelector<HTMLButtonElement>("#updateCheckBtn")!;
@@ -119,9 +121,17 @@ type UiSettings = {
   terminalFontSize: number;
 };
 
+type FavoriteItem = {
+  entry: DesktopSearchResponse["results"][number]["entry"];
+  savedAt: number;
+};
+
 const uiSettingsKey = "cmdfind:desktop:ui-settings";
+const favoritesKey = "cmdfind:desktop:favorites";
 const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite", "sunset", "emerald", "amber", "cyber", "rose"];
 let currentUiLanguage: "de" | "en" = "de";
+let lastSearchResponse: DesktopSearchResponse | null = null;
+const renderedEntriesByKey = new Map<string, DesktopSearchResponse["results"][number]["entry"]>();
 const i18n = {
   de: {
     subtitle: "Finde passende Befehle schneller und mit klarerer Oberfläche.",
@@ -130,6 +140,8 @@ const i18n = {
     updateInstall: "Jetzt installieren",
     search: "Suchen",
     allLocal: "Alle lokal",
+    favorites: "Favoriten",
+    exportFavorites: "Export",
     context: "aktuellen Kontext bevorzugen",
     refresh: "lokalen Index neu laden",
     disableLocal: "lokalen Index deaktivieren",
@@ -161,6 +173,12 @@ const i18n = {
     suggestionApply: "Tab zum Übernehmen",
     saveLanguageNeedPick: "Bitte de oder en auswählen, um die Standardsprache zu speichern.",
     saveLanguageSaved: "Standardsprache gespeichert:",
+    favoritesTitle: "Favoriten geladen",
+    favoritesEmpty: "Noch keine Favoriten gespeichert.",
+    favoriteAdd: "Zu Favoriten hinzugefügt",
+    favoriteRemove: "Aus Favoriten entfernt",
+    favoritesExported: "Favoriten exportiert:",
+    favoritesExportEmpty: "Keine Favoriten zum Exportieren vorhanden.",
     enterQuery: "Bitte Suchbegriff eingeben.",
     searching: "Suche läuft...",
     noResults: "Keine Ergebnisse.",
@@ -173,6 +191,8 @@ const i18n = {
     updateInstall: "Install now",
     search: "Search",
     allLocal: "All Local",
+    favorites: "Favorites",
+    exportFavorites: "Export",
     context: "prefer current context",
     refresh: "refresh local index",
     disableLocal: "disable local index",
@@ -204,6 +224,12 @@ const i18n = {
     suggestionApply: "Tab to apply",
     saveLanguageNeedPick: "Select de or en to save default language.",
     saveLanguageSaved: "Saved default language:",
+    favoritesTitle: "Favorites loaded",
+    favoritesEmpty: "No favorites saved yet.",
+    favoriteAdd: "Added to favorites",
+    favoriteRemove: "Removed from favorites",
+    favoritesExported: "Favorites exported:",
+    favoritesExportEmpty: "No favorites to export.",
     enterQuery: "Enter a query.",
     searching: "Searching...",
     noResults: "No results.",
@@ -260,6 +286,8 @@ function applyUiLanguage(lang: "de" | "en"): void {
   updateInstallBtn.textContent = t("updateInstall");
   searchBtn.textContent = t("search");
   allBtn.textContent = t("allLocal");
+  favoritesBtn.textContent = t("favorites");
+  exportFavoritesBtn.textContent = t("exportFavorites");
   (document.getElementById("labelContext") as HTMLElement | null)?.replaceChildren(t("context"));
   (document.getElementById("labelRefresh") as HTMLElement | null)?.replaceChildren(t("refresh"));
   (document.getElementById("labelDisableLocal") as HTMLElement | null)?.replaceChildren(t("disableLocal"));
@@ -467,34 +495,92 @@ function escapeHtml(text: string): string {
     .replaceAll("'", "&#039;");
 }
 
-function render(response: DesktopSearchResponse): void {
-  statusEl.textContent = `Context: ${response.context.platform}/${response.context.shell} | Lang: ${response.context.language}`;
+function favoriteKeyFor(entry: DesktopSearchResponse["results"][number]["entry"]): string {
+  return `${entry.command}::${entry.platform}::${entry.shell}`;
+}
 
-  if (response.results.length === 0) {
+function readFavorites(): FavoriteItem[] {
+  try {
+    const raw = localStorage.getItem(favoritesKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as FavoriteItem[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => item?.entry?.command).slice(0, 500);
+  } catch {
+    return [];
+  }
+}
+
+function saveFavorites(items: FavoriteItem[]): void {
+  localStorage.setItem(favoritesKey, JSON.stringify(items));
+}
+
+function isFavorite(entry: DesktopSearchResponse["results"][number]["entry"]): boolean {
+  const key = favoriteKeyFor(entry);
+  return readFavorites().some((item) => favoriteKeyFor(item.entry) === key);
+}
+
+function toggleFavorite(entry: DesktopSearchResponse["results"][number]["entry"]): { active: boolean } {
+  const key = favoriteKeyFor(entry);
+  const all = readFavorites();
+  const existing = all.findIndex((item) => favoriteKeyFor(item.entry) === key);
+  if (existing >= 0) {
+    all.splice(existing, 1);
+    saveFavorites(all);
+    return { active: false };
+  }
+  all.unshift({ entry, savedAt: Date.now() });
+  saveFavorites(all);
+  return { active: true };
+}
+
+function renderEntries(
+  entries: DesktopSearchResponse["results"][number]["entry"][],
+  contextLanguage: "de" | "en",
+  statusText: string
+): void {
+  renderedEntriesByKey.clear();
+  for (const entry of entries) {
+    renderedEntriesByKey.set(favoriteKeyFor(entry), entry);
+  }
+  statusEl.textContent = statusText;
+
+  if (entries.length === 0) {
     resultsEl.innerHTML = `<div class="empty">${escapeHtml(t("noResults"))}</div>`;
     return;
   }
 
-  resultsEl.innerHTML = response.results
-    .map((result, index) => {
-      const note = response.context.language === "de" ? result.entry.description.de : result.entry.description.en;
+  resultsEl.innerHTML = entries
+    .map((entry, index) => {
+      const note = contextLanguage === "de" ? entry.description.de : entry.description.en;
+      const activeFavorite = isFavorite(entry);
       return `
       <article class="card">
-        <div class="head"><span class="idx">${index + 1}</span> ${escapeHtml(result.entry.task.replaceAll("_", " "))}</div>
+        <div class="head"><span class="idx">${index + 1}</span> ${escapeHtml(entry.task.replaceAll("_", " "))}</div>
         <div class="command-row">
-          <div class="command">${escapeHtml(result.entry.command)}</div>
-          <button class="copy-btn" data-cmd="${escapeHtml(result.entry.command)}">Copy</button>
+          <div class="command">${escapeHtml(entry.command)}</div>
+          <button class="copy-btn" data-cmd="${escapeHtml(entry.command)}">Copy</button>
+          <button class="favorite-btn" data-fav-key="${escapeHtml(favoriteKeyFor(entry))}" aria-label="Favorite">${activeFavorite ? "★" : "☆"}</button>
         </div>
         <div class="note">${escapeHtml(note)}</div>
-        <div class="meta">Example: ${escapeHtml(result.entry.example)}</div>
-        <div class="meta">${escapeHtml(result.entry.platform)} | ${escapeHtml(result.entry.shell)} | ${escapeHtml(
-        result.entry.sourceType
-      )} | ${escapeHtml(result.entry.category)} | ${result.entry.locallyAvailable ? "local" : "seed"} | ${escapeHtml(
-        result.entry.dangerLevel
+        <div class="meta">Example: ${escapeHtml(entry.example)}</div>
+        <div class="meta">${escapeHtml(entry.platform)} | ${escapeHtml(entry.shell)} | ${escapeHtml(
+        entry.sourceType
+      )} | ${escapeHtml(entry.category)} | ${entry.locallyAvailable ? "local" : "seed"} | ${escapeHtml(
+        entry.dangerLevel
       )}</div>
       </article>`;
     })
     .join("");
+}
+
+function render(response: DesktopSearchResponse): void {
+  lastSearchResponse = response;
+  renderEntries(
+    response.results.map((item) => item.entry),
+    response.context.language,
+    `Context: ${response.context.platform}/${response.context.shell} | Lang: ${response.context.language}`
+  );
 }
 
 async function copyCommand(command: string): Promise<void> {
@@ -544,6 +630,42 @@ searchBtn.addEventListener("click", () => {
 allBtn.addEventListener("click", () => {
   currentContextCheckbox.checked = false;
   void runSearch(true);
+});
+
+favoritesBtn.addEventListener("click", () => {
+  const favorites = readFavorites().sort((a, b) => b.savedAt - a.savedAt);
+  renderEntries(
+    favorites.map((item) => item.entry),
+    currentUiLanguage,
+    t("favoritesTitle")
+  );
+  if (!favorites.length) {
+    statusEl.textContent = t("favoritesEmpty");
+  }
+});
+
+exportFavoritesBtn.addEventListener("click", () => {
+  const favorites = readFavorites().sort((a, b) => b.savedAt - a.savedAt);
+  if (!favorites.length) {
+    statusEl.textContent = t("favoritesExportEmpty");
+    return;
+  }
+
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    count: favorites.length,
+    items: favorites
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `cmdfind-favorites-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  statusEl.textContent = `${t("favoritesExported")} ${favorites.length}`;
 });
 
 updateCheckBtn.addEventListener("click", async () => {
@@ -1081,14 +1203,22 @@ window.addEventListener("resize", () => {
 
 resultsEl.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
-  if (!target.classList.contains("copy-btn")) {
+  if (target.classList.contains("copy-btn")) {
+    const cmd = target.getAttribute("data-cmd");
+    if (!cmd) return;
+    void copyCommand(cmd);
     return;
   }
-  const cmd = target.getAttribute("data-cmd");
-  if (!cmd) {
-    return;
+
+  if (target.classList.contains("favorite-btn")) {
+    const key = target.getAttribute("data-fav-key");
+    if (!key) return;
+    const found = renderedEntriesByKey.get(key);
+    if (!found) return;
+    const state = toggleFavorite(found);
+    target.textContent = state.active ? "★" : "☆";
+    statusEl.textContent = state.active ? t("favoriteAdd") : t("favoriteRemove");
   }
-  void copyCommand(cmd);
 });
 
 void window.cmdfindDesktop.getDefaultLanguage().then((lang) => {
