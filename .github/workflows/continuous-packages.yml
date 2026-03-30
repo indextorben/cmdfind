@@ -11,6 +11,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  CONTINUOUS_VERSION: 0.1.${{ github.run_number }}
 
 jobs:
   build-packages:
@@ -106,7 +107,7 @@ jobs:
           APPLE_API_KEY: ${{ env.APPLE_API_KEY }}
           APPLE_API_KEY_ID: ${{ env.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ env.APPLE_API_ISSUER }}
-        run: npx electron-builder --publish never --${{ matrix.target }} --config.directories.output=release/${{ matrix.target }}
+        run: npx electron-builder --publish never --${{ matrix.target }} --config.directories.output=release/${{ matrix.target }} --config.extraMetadata.version=${{ env.CONTINUOUS_VERSION }}
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v5
@@ -153,7 +154,7 @@ jobs:
         run: |
           gh release edit continuous -R ${{ github.repository }} \
             --title "cmdfind Continuous Desktop Build" \
-            --notes "Auto-generated desktop packages from commit ${{ github.sha }}. Updated on every push to main." \
+            --notes "Auto-generated desktop packages from commit ${{ github.sha }}. Version: ${{ env.CONTINUOUS_VERSION }}. Updated on every push to main." \
             --prerelease
 
       - name: Remove old release assets
