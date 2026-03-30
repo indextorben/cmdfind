@@ -5,6 +5,7 @@ import type { Language } from "./types.js";
 
 export interface CmdfindConfig {
   defaultLanguage?: Language;
+  desktopSearchShortcut?: string;
 }
 
 function getDefaultBaseDir(): string {

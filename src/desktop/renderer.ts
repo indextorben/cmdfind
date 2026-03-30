@@ -47,6 +47,8 @@ declare global {
       }) => Promise<DesktopSearchResponse>;
       getDefaultLanguage: () => Promise<"de" | "en" | null>;
       setDefaultLanguage: (language: "de" | "en") => Promise<boolean>;
+      getGlobalSearchShortcut: () => Promise<string>;
+      setGlobalSearchShortcut: (shortcut: string) => Promise<string>;
       updateGetState: () => Promise<UpdateState>;
       updateCheck: () => Promise<boolean>;
       updateDownload: () => Promise<boolean>;
@@ -65,6 +67,7 @@ declare global {
       >;
       onTerminalOutput: (callback: (chunk: string) => void) => () => void;
       onUpdateState: (callback: (state: UpdateState) => void) => () => void;
+      onQuickFocus: (callback: () => void) => () => void;
     };
   }
 }
@@ -119,6 +122,7 @@ const terminalClear = document.querySelector<HTMLButtonElement>("#terminalClear"
 const terminalStop = document.querySelector<HTMLButtonElement>("#terminalStop")!;
 const terminalSuggest = document.querySelector<HTMLDivElement>("#terminalSuggest")!;
 const terminalInlineHint = document.querySelector<HTMLDivElement>("#terminalInlineHint")!;
+const wrapEl = document.querySelector<HTMLElement>(".wrap")!;
 
 type UiSettings = {
   uiLanguage: "de" | "en";
@@ -142,6 +146,7 @@ const searchHistoryKey = "cmdfind:desktop:search-history";
 const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite", "sunset", "emerald", "amber", "cyber", "rose"];
 let currentUiLanguage: "de" | "en" = "de";
 let currentSearchShortcut = "";
+let lastSyncedGlobalShortcut = "";
 const renderedEntriesByKey = new Map<string, DesktopSearchResponse["results"][number]["entry"]>();
 const i18n = {
   de: {
@@ -503,6 +508,20 @@ function updateTerminalCurrentDirHintFromOutput(plainOutput: string): void {
   }
 }
 let terminalCurrentDirHint = "~";
+let wrapScrollRaf = 0;
+
+function syncWrapScrollState(): void {
+  const needsScroll = wrapEl.scrollHeight - wrapEl.clientHeight > 2;
+  wrapEl.classList.toggle("can-scroll", needsScroll);
+}
+
+function queueWrapScrollState(): void {
+  if (wrapScrollRaf) return;
+  wrapScrollRaf = window.requestAnimationFrame(() => {
+    wrapScrollRaf = 0;
+    syncWrapScrollState();
+  });
+}
 
 const quickSettingsFields: HTMLElement[] = [
   queryInput,
@@ -620,6 +639,7 @@ function applyUiSettings(settings: UiSettings): void {
     const size = getTerminalSizeEstimate();
     void window.cmdfindDesktop.terminalResize(size.cols, size.rows);
   }
+  queueWrapScrollState();
 }
 
 function escapeHtml(text: string): string {
@@ -685,12 +705,14 @@ function renderSearchHistory(): void {
   if (!history.length) {
     searchHistoryWrap.hidden = true;
     searchHistoryList.innerHTML = "";
+    queueWrapScrollState();
     return;
   }
   searchHistoryWrap.hidden = false;
   searchHistoryList.innerHTML = history
     .map((item) => `<button type="button" class="history-chip" data-query="${escapeHtml(item)}">${escapeHtml(item)}</button>`)
     .join("");
+  queueWrapScrollState();
 }
 
 function isFavorite(entry: DesktopSearchResponse["results"][number]["entry"]): boolean {
@@ -725,6 +747,7 @@ function renderEntries(
 
   if (entries.length === 0) {
     resultsEl.innerHTML = `<div class="empty">${escapeHtml(t("noResults"))}</div>`;
+    queueWrapScrollState();
     return;
   }
 
@@ -751,6 +774,7 @@ function renderEntries(
       </article>`;
     })
     .join("");
+  queueWrapScrollState();
 }
 
 function render(response: DesktopSearchResponse): void {
@@ -944,6 +968,7 @@ saveLangBtn.addEventListener("click", async () => {
 function setSettingsOpen(open: boolean): void {
   settingsPanel.hidden = !open;
   document.body.classList.toggle("settings-open", open);
+  queueWrapScrollState();
 }
 
 settingsToggle.addEventListener("click", () => {
@@ -1001,6 +1026,19 @@ function syncUiSettings(): void {
   };
   applyUiSettings(settings);
   saveUiSettings(settings);
+  if (settings.searchShortcut !== lastSyncedGlobalShortcut) {
+    void window.cmdfindDesktop.setGlobalSearchShortcut(settings.searchShortcut).then((normalized) => {
+      lastSyncedGlobalShortcut = normalized || settings.searchShortcut;
+      if (normalized && normalized !== settings.searchShortcut) {
+        setShortcutInput(normalized);
+        setShortcutConflict(getReservedShortcutConflict(normalized));
+        saveUiSettings({
+          ...settings,
+          searchShortcut: normalized
+        });
+      }
+    });
+  }
 }
 
 uiLanguageSelect.addEventListener("change", syncUiSettings);
@@ -1490,13 +1528,35 @@ void window.cmdfindDesktop.getDefaultLanguage().then((lang) => {
   }
 });
 
+void window.cmdfindDesktop.getGlobalSearchShortcut().then((shortcut) => {
+  if (!shortcut) return;
+  lastSyncedGlobalShortcut = shortcut;
+  const settings = readUiSettings();
+  if (settings.searchShortcut === shortcut) return;
+  const merged = { ...settings, searchShortcut: shortcut };
+  applyUiSettings(merged);
+  saveUiSettings(merged);
+});
+
 applyUiSettings(readUiSettings());
 renderSearchHistory();
+queueWrapScrollState();
+window.addEventListener("resize", queueWrapScrollState);
+new MutationObserver(() => queueWrapScrollState()).observe(wrapEl, {
+  childList: true,
+  subtree: true,
+  attributes: true
+});
 window.cmdfindDesktop.onTerminalOutput((chunk) => {
   appendTerminalOutput(chunk);
 });
 window.cmdfindDesktop.onUpdateState((state) => {
   renderUpdateState(state);
+});
+window.cmdfindDesktop.onQuickFocus(() => {
+  setSettingsOpen(false);
+  queryInput.focus();
+  queryInput.select();
 });
 void window.cmdfindDesktop.updateGetState().then((state) => {
   renderUpdateState(state);

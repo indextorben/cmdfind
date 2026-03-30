@@ -104,9 +104,13 @@
         height: 100vh;
         margin: 0 auto;
         padding: 28px 0 34px;
-        overflow-y: auto;
+        overflow-y: hidden;
         overflow-x: hidden;
         zoom: var(--ui-scale, 1);
+      }
+
+      .wrap.can-scroll {
+        overflow-y: auto;
       }
 
       .hero {

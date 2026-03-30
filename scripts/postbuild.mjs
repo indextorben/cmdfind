@@ -11,7 +11,8 @@ fs.mkdirSync(distDesktopDir, { recursive: true });
 const copyMap = [
   ["src/data/commands.json", "dist/data/commands.json"],
   ["src/data/it-commands.json", "dist/data/it-commands.json"],
-  ["src/desktop/index.html", "dist/desktop/index.html"]
+  ["src/desktop/index.html", "dist/desktop/index.html"],
+  ["src/desktop/quick-search.html", "dist/desktop/quick-search.html"]
 ];
 
 for (const [fromRel, toRel] of copyMap) {

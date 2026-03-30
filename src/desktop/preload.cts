@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("cmdfindDesktop", {
   }) => ipcRenderer.invoke("cmdfind:search", request),
   getDefaultLanguage: () => ipcRenderer.invoke("cmdfind:get-default-language"),
   setDefaultLanguage: (language: "de" | "en") => ipcRenderer.invoke("cmdfind:set-default-language", language),
+  getGlobalSearchShortcut: () => ipcRenderer.invoke("cmdfind:get-global-search-shortcut"),
+  setGlobalSearchShortcut: (shortcut: string) => ipcRenderer.invoke("cmdfind:set-global-search-shortcut", shortcut),
   updateGetState: () => ipcRenderer.invoke("cmdfind:update-get-state"),
   updateCheck: () => ipcRenderer.invoke("cmdfind:update-check"),
   updateDownload: () => ipcRenderer.invoke("cmdfind:update-download"),
@@ -40,5 +42,10 @@ contextBridge.exposeInMainWorld("cmdfindDesktop", {
     const listener = (_event: unknown, state: unknown) => callback(state as never);
     ipcRenderer.on("cmdfind:update-state", listener);
     return () => ipcRenderer.removeListener("cmdfind:update-state", listener);
+  },
+  onQuickFocus: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("cmdfind:quick-focus", listener);
+    return () => ipcRenderer.removeListener("cmdfind:quick-focus", listener);
   }
 });

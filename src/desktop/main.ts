@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, globalShortcut, ipcMain } from "electron";
 import electronUpdater from "electron-updater";
 import fs from "node:fs";
 import os from "node:os";
@@ -33,7 +33,10 @@ type TerminalSession =
 
 const terminalSessions = new Map<number, TerminalSession>();
 let mainWindow: BrowserWindow | null = null;
+let quickSearchWindow: BrowserWindow | null = null;
 let updaterInitialized = false;
+let registeredGlobalShortcut: string | null = null;
+const DEFAULT_GLOBAL_SEARCH_SHORTCUT = "CommandOrControl+B";
 
 type UpdateState =
   | { status: "idle"; message: string; currentVersion: string }
@@ -282,6 +285,138 @@ function createWindow(): void {
   });
 }
 
+function normalizeShortcutToAccelerator(shortcut: string | undefined): string | null {
+  const raw = (shortcut || "").trim();
+  if (!raw) return null;
+  const parts = raw
+    .split("+")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+
+  const keyRaw = parts[parts.length - 1];
+  const keyMap: Record<string, string> = {
+    SPACE: "Space",
+    ENTER: "Enter",
+    ESC: "Escape",
+    ESCAPE: "Escape",
+    TAB: "Tab",
+    BACKSPACE: "Backspace",
+    DELETE: "Delete",
+    ARROWUP: "Up",
+    ARROWDOWN: "Down",
+    ARROWLEFT: "Left",
+    ARROWRIGHT: "Right"
+  };
+  const normalizedKey = keyMap[keyRaw.toUpperCase()] ?? keyRaw;
+
+  const modifierSet = new Set<string>();
+  for (const part of parts.slice(0, -1)) {
+    const upper = part.toUpperCase();
+    if (upper === "CONTROL" || upper === "CTRL" || upper === "META" || upper === "CMD" || upper === "COMMAND") {
+      modifierSet.add("CommandOrControl");
+      continue;
+    }
+    if (upper === "ALT" || upper === "OPTION") {
+      modifierSet.add("Alt");
+      continue;
+    }
+    if (upper === "SHIFT") {
+      modifierSet.add("Shift");
+      continue;
+    }
+  }
+
+  if (!modifierSet.size) return null;
+
+  const key =
+    normalizedKey.length === 1
+      ? normalizedKey.toUpperCase()
+      : normalizedKey.charAt(0).toUpperCase() + normalizedKey.slice(1);
+
+  return [...modifierSet, key].join("+");
+}
+
+function registerGlobalSearchShortcut(shortcutValue?: string): string {
+  const accelerator = normalizeShortcutToAccelerator(shortcutValue) ?? DEFAULT_GLOBAL_SEARCH_SHORTCUT;
+
+  if (registeredGlobalShortcut) {
+    globalShortcut.unregister(registeredGlobalShortcut);
+    registeredGlobalShortcut = null;
+  }
+
+  const ok = globalShortcut.register(accelerator, () => {
+    showQuickSearchWindow();
+  });
+
+  if (!ok) {
+    if (accelerator !== DEFAULT_GLOBAL_SEARCH_SHORTCUT) {
+      const fallbackOk = globalShortcut.register(DEFAULT_GLOBAL_SEARCH_SHORTCUT, () => {
+        showQuickSearchWindow();
+      });
+      if (fallbackOk) {
+        registeredGlobalShortcut = DEFAULT_GLOBAL_SEARCH_SHORTCUT;
+        return DEFAULT_GLOBAL_SEARCH_SHORTCUT;
+      }
+    }
+    return accelerator;
+  }
+
+  registeredGlobalShortcut = accelerator;
+  return accelerator;
+}
+
+function ensureQuickSearchWindow(): BrowserWindow {
+  if (quickSearchWindow && !quickSearchWindow.isDestroyed()) {
+    return quickSearchWindow;
+  }
+
+  const window = new BrowserWindow({
+    width: 760,
+    height: 520,
+    minWidth: 640,
+    minHeight: 420,
+    maxWidth: 980,
+    maxHeight: 760,
+    show: false,
+    frame: false,
+    resizable: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: "#0a0f1a",
+    title: "cmdfind quick search",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.cjs")
+    }
+  });
+
+  window.loadFile(path.join(__dirname, "quick-search.html"));
+
+  window.on("blur", () => {
+    if (!window.isDestroyed()) {
+      window.hide();
+    }
+  });
+
+  window.on("closed", () => {
+    if (quickSearchWindow === window) {
+      quickSearchWindow = null;
+    }
+  });
+
+  quickSearchWindow = window;
+  return window;
+}
+
+function showQuickSearchWindow(): void {
+  const window = ensureQuickSearchWindow();
+  if (!window.isVisible()) {
+    window.show();
+  }
+  window.focus();
+  window.webContents.send("cmdfind:quick-focus");
+}
+
 ipcMain.handle("cmdfind:search", (_event, request: DesktopSearchRequest) => {
   return performSearch(request);
 });
@@ -296,6 +431,19 @@ ipcMain.handle("cmdfind:set-default-language", (_event, language: Language) => {
     defaultLanguage: language
   });
   return true;
+});
+
+ipcMain.handle("cmdfind:get-global-search-shortcut", () => {
+  return loadConfig().desktopSearchShortcut ?? DEFAULT_GLOBAL_SEARCH_SHORTCUT;
+});
+
+ipcMain.handle("cmdfind:set-global-search-shortcut", (_event, shortcut: string) => {
+  const normalized = registerGlobalSearchShortcut(shortcut);
+  saveConfig({
+    ...loadConfig(),
+    desktopSearchShortcut: normalized
+  });
+  return normalized;
 });
 
 function stripWrappingQuotes(value: string): string {
@@ -627,6 +775,7 @@ ipcMain.handle("cmdfind:update-install", () => {
 app.whenReady().then(() => {
   setupAutoUpdater();
   createWindow();
+  registerGlobalSearchShortcut(loadConfig().desktopSearchShortcut);
   if (app.isPackaged) {
     setTimeout(() => {
       void autoUpdater.checkForUpdates().catch(() => {
@@ -636,9 +785,12 @@ app.whenReady().then(() => {
   }
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (!mainWindow || mainWindow.isDestroyed()) {
       createWindow();
+      return;
     }
+    mainWindow.show();
+    mainWindow.focus();
   });
 });
 
@@ -646,4 +798,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
 });
