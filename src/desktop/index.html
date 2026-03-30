@@ -75,6 +75,7 @@
           radial-gradient(1000px 520px at -10% -20%, var(--bg-orb-a) 0%, transparent 60%),
           radial-gradient(1000px 520px at 110% -30%, var(--bg-orb-b) 0%, transparent 64%),
           linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
+        overflow: hidden;
       }
 
       body::before {
@@ -100,7 +101,11 @@
 
       .wrap {
         width: min(1200px, calc(100% - 44px));
-        margin: 28px auto 34px;
+        height: 100vh;
+        margin: 0 auto;
+        padding: 28px 0 34px;
+        overflow-y: auto;
+        overflow-x: hidden;
         zoom: var(--ui-scale, 1);
       }
 
@@ -958,7 +963,9 @@
       @media (max-width: 820px) {
         .wrap {
           width: min(1200px, calc(100% - 24px));
-          margin: 12px auto;
+          height: 100vh;
+          margin: 0 auto;
+          padding: 12px 0;
         }
 
         .hero {
