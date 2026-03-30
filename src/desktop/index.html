@@ -29,6 +29,31 @@
 
       * { box-sizing: border-box; }
 
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(129, 165, 240, 0.65) rgba(7, 11, 24, 0.36);
+      }
+
+      *::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      *::-webkit-scrollbar-track {
+        background: rgba(7, 11, 24, 0.32);
+        border-radius: 999px;
+      }
+
+      *::-webkit-scrollbar-thumb {
+        background: rgba(126, 163, 241, 0.66);
+        border-radius: 999px;
+        border: 1px solid rgba(9, 14, 28, 0.52);
+      }
+
+      *::-webkit-scrollbar-thumb:hover {
+        background: rgba(151, 186, 255, 0.84);
+      }
+
       html,
       body {
         height: 100%;
@@ -616,16 +641,19 @@
 
       .settings-panel {
         position: fixed;
-        top: 30px;
-        right: 34px;
-        width: min(560px, calc(100vw - 84px));
-        max-height: calc(100vh - 72px);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(1080px, calc(100vw - 92px));
+        max-height: calc(100vh - 84px);
         border: 1px solid var(--line);
-        border-radius: 14px;
-        background: rgba(13, 20, 38, 0.96);
-        backdrop-filter: blur(14px);
+        border-radius: 16px;
+        background:
+          linear-gradient(160deg, rgba(14, 21, 41, 0.97), rgba(9, 14, 30, 0.98)),
+          radial-gradient(900px 260px at 0% 0%, rgba(111, 155, 255, 0.16), transparent 64%);
+        backdrop-filter: blur(16px);
         box-shadow: var(--shadow);
-        padding: 18px;
+        padding: 22px 24px;
         z-index: 30;
         overflow-y: auto;
       }
@@ -656,12 +684,20 @@
 
       .settings-grid {
         display: grid;
-        gap: 10px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 16px;
+        row-gap: 12px;
       }
 
       .setting {
         display: grid;
         gap: 6px;
+      }
+
+      .setting-wide,
+      .setting-block,
+      .setting-readme {
+        grid-column: 1 / -1;
       }
 
       .setting-block {
@@ -885,11 +921,17 @@
         }
 
         .settings-panel {
-          top: auto;
-          right: 16px;
-          bottom: 16px;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
           width: calc(100vw - 32px);
           max-height: calc(100vh - 32px);
+          padding: 16px;
+        }
+
+        .settings-grid {
+          grid-template-columns: 1fr;
+          gap: 10px;
         }
 
         .controls {
@@ -1002,7 +1044,7 @@
           </select>
         </div>
 
-        <div class="setting">
+        <div class="setting setting-wide">
           <label id="searchShortcutLabel" for="searchShortcut">Such-Shortcut</label>
           <div class="shortcut-row">
             <input id="searchShortcut" class="shortcut-input" type="text" readonly value="Ctrl+B" />
@@ -1069,7 +1111,7 @@
         </div>
 
         <div class="setting setting-readme">
-          <label id="readmeTitle" for="readmeContent">README</label>
+          <label id="readmeTitle" for="readmeContent">Tutorial</label>
           <div id="readmeContent" class="readme-content"></div>
         </div>
       </div>

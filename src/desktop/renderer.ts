@@ -187,7 +187,7 @@ const i18n = {
     terminalFontLabel: "Terminal-Schriftgröße",
     systemTitle: "System",
     updatesLabel: "Updates",
-    readmeTitle: "README: So funktioniert cmdfind",
+    readmeTitle: "Tutorial: So nutzt du cmdfind",
     suggestionPrefix: "Vorschlag:",
     suggestionApply: "Tab zum Übernehmen",
     saveLanguageNeedPick: "Bitte de oder en auswählen, um die Standardsprache zu speichern.",
@@ -248,7 +248,7 @@ const i18n = {
     terminalFontLabel: "Terminal font size",
     systemTitle: "System",
     updatesLabel: "Updates",
-    readmeTitle: "README: How cmdfind works",
+    readmeTitle: "Tutorial: How to use cmdfind",
     suggestionPrefix: "Suggestion:",
     suggestionApply: "Tab to apply",
     saveLanguageNeedPick: "Select de or en to save default language.",
@@ -361,37 +361,41 @@ function setShortcutInput(shortcut: string): void {
 function getReadmeHtml(lang: "de" | "en"): string {
   if (lang === "de") {
     return `
-      <p><strong>Was macht cmdfind?</strong><br />cmdfind hilft dir dabei, passende Terminal-Befehle schnell zu finden und direkt auszuführen.</p>
+      <p><strong>Tutorial: In 2 Minuten produktiv</strong></p>
+      <p><strong>Schritt 1 - Befehl suchen</strong><br />Tippe einen Begriff wie <code>ping</code>, <code>datei löschen</code> oder <code>port 3000</code> in die Suche und klicke auf <em>Suchen</em>.</p>
+      <p><strong>Schritt 2 - Treffer verfeinern</strong><br />Nutze <em>Sprache</em>, <em>Plattform</em>, <em>Shell</em> und <em>Limit</em>, damit nur passende Befehle angezeigt werden.</p>
+      <p><strong>Schritt 3 - Befehl ausführen</strong><br />Beim Treffer auf <em>Ausführen</em> klicken. Der Befehl startet direkt im integrierten Terminal.</p>
+      <p><strong>Schritt 4 - Favoriten sichern</strong><br />Mit <em>★</em> speicherst du wichtige Befehle dauerhaft. Über <em>Favoriten</em> findest du sie sofort wieder.</p>
+      <p><strong>Schritt 5 - Team teilen</strong><br />Mit <em>Export</em> bekommst du eine JSON-Datei deiner Favoriten, ideal für Backup oder Team-Setup.</p>
+      <p><strong>Schritt 6 - Workflow beschleunigen</strong><br />Lege unter <em>Such-Shortcut</em> deine Tastenkombi fest. Mit dem Shortcut springst du direkt ins Suchfeld.</p>
+      <p><strong>Schritt 7 - Terminal effizient nutzen</strong><br />Vorschlag mit <code>Tab</code> übernehmen, Verlauf mit Pfeil hoch/runter durchgehen, laufenden Prozess mit <code>Ctrl+C</code> stoppen.</p>
+      <p><strong>Schritt 8 - Oberfläche anpassen</strong><br />In den Einstellungen änderst du App-Sprache, Theme, Akzent, UI-Größe und Terminal-Darstellung.</p>
+      <p><strong>Pro-Tipps</strong></p>
       <ul>
-        <li><strong>Suchen:</strong> Gib einen Begriff ein und nutze <em>Suchen</em> oder <em>Alle lokal</em>.</li>
-        <li><strong>Filter:</strong> Stelle Sprache, Plattform, Shell und Limit ein.</li>
-        <li><strong>Kontext:</strong> Mit <em>aktuellen Kontext bevorzugen</em> werden passendere Treffer angezeigt.</li>
-        <li><strong>Standardsprache:</strong> Wähle <code>de</code> oder <code>en</code> und speichere sie als Standard für die Suche.</li>
+        <li><strong>Suchverlauf:</strong> Häufige Begriffe erscheinen als Schnellzugriff.</li>
+        <li><strong>Kontext-Modus:</strong> Mit <em>aktuellen Kontext bevorzugen</em> priorisiert cmdfind passende OS-/Shell-Befehle.</li>
+        <li><strong>Updates:</strong> In <em>System > Updates</em> prüfst du neue Versionen direkt in der App.</li>
       </ul>
-      <ul>
-        <li><strong>Integriertes Terminal:</strong> Öffne es über das Terminal-Symbol rechts oben.</li>
-        <li><strong>Autovervollständigung:</strong> Vorschläge erscheinen beim Tippen; mit <code>Tab</code> übernimmst du sie.</li>
-        <li><strong>Verlauf:</strong> Mit Pfeil hoch/runter navigierst du durch vorherige Befehle.</li>
-        <li><strong>Clear:</strong> Löscht die Ausgabe, der aktuelle Prompt bleibt erhalten.</li>
-      </ul>
-      <p><strong>Einstellungen:</strong> Hier kannst du App-Sprache, Theme, Akzentfarbe, UI-Größe und Terminal-Darstellung anpassen.</p>
+      <p><strong>Ziel:</strong> Weniger Suchzeit, weniger Tippfehler, schneller zum funktionierenden Befehl.</p>
     `;
   }
   return `
-    <p><strong>What does cmdfind do?</strong><br />cmdfind helps you find the right terminal commands quickly and run them directly.</p>
+    <p><strong>Tutorial: Be productive in 2 minutes</strong></p>
+    <p><strong>Step 1 - Search a command</strong><br />Type terms like <code>ping</code>, <code>delete file</code>, or <code>port 3000</code>, then click <em>Search</em>.</p>
+    <p><strong>Step 2 - Refine results</strong><br />Use <em>language</em>, <em>platform</em>, <em>shell</em>, and <em>limit</em> to narrow down results.</p>
+    <p><strong>Step 3 - Run command</strong><br />Click <em>Run</em> on any result to execute it inside the integrated terminal.</p>
+    <p><strong>Step 4 - Save favorites</strong><br />Use <em>★</em> to keep important commands for quick reuse.</p>
+    <p><strong>Step 5 - Share with your team</strong><br />Use <em>Export</em> to create a JSON backup/share file of favorites.</p>
+    <p><strong>Step 6 - Speed up workflow</strong><br />Set your own search shortcut in Settings and jump to search instantly.</p>
+    <p><strong>Step 7 - Terminal workflow</strong><br />Use <code>Tab</code> to apply suggestion, Up/Down for history, and <code>Ctrl+C</code> to stop running commands.</p>
+    <p><strong>Step 8 - Customize UI</strong><br />Tune app language, theme, accent, UI scale, and terminal style in Settings.</p>
+    <p><strong>Pro tips</strong></p>
     <ul>
-      <li><strong>Search:</strong> Enter a term and use <em>Search</em> or <em>All Local</em>.</li>
-      <li><strong>Filters:</strong> Configure language, platform, shell, and result limit.</li>
-      <li><strong>Context:</strong> With <em>prefer current context</em>, results are better matched.</li>
-      <li><strong>Default language:</strong> Pick <code>de</code> or <code>en</code> and save it as default for search.</li>
+      <li><strong>Search history:</strong> Reuse recent queries quickly.</li>
+      <li><strong>Context mode:</strong> <em>Prefer current context</em> prioritizes commands for your active OS/shell.</li>
+      <li><strong>Updates:</strong> Check new releases directly in <em>System > Updates</em>.</li>
     </ul>
-    <ul>
-      <li><strong>Integrated terminal:</strong> Open it using the terminal icon in the top-right.</li>
-      <li><strong>Autocomplete:</strong> Suggestions appear while typing; press <code>Tab</code> to accept.</li>
-      <li><strong>History:</strong> Use Up/Down arrows to navigate previous commands.</li>
-      <li><strong>Clear:</strong> Clears output while keeping the current prompt.</li>
-    </ul>
-    <p><strong>Settings:</strong> You can customize app language, theme, accent color, UI size, and terminal appearance.</p>
+    <p><strong>Goal:</strong> Spend less time searching and more time executing working commands.</p>
   `;
 }
 
@@ -939,6 +943,7 @@ saveLangBtn.addEventListener("click", async () => {
 
 function setSettingsOpen(open: boolean): void {
   settingsPanel.hidden = !open;
+  document.body.classList.toggle("settings-open", open);
 }
 
 settingsToggle.addEventListener("click", () => {

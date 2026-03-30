@@ -64,7 +64,7 @@ function setupAutoUpdater(): void {
   autoUpdater.on("checking-for-update", () => {
     sendUpdateState({
       status: "checking",
-      message: "Pruefe auf Updates...",
+      message: "Prüfe auf Updates...",
       currentVersion: app.getVersion()
     });
   });
@@ -72,7 +72,7 @@ function setupAutoUpdater(): void {
   autoUpdater.on("update-available", (info) => {
     sendUpdateState({
       status: "available",
-      message: `Update verfuegbar: ${info.version}`,
+      message: `Update verfügbar: ${info.version}`,
       currentVersion: app.getVersion(),
       version: info.version
     });
@@ -580,7 +580,7 @@ ipcMain.handle("cmdfind:update-check", async () => {
   if (!app.isPackaged) {
     sendUpdateState({
       status: "error",
-      message: "Updates nur in der installierten App verfuegbar (nicht im Dev-Modus).",
+      message: "Updates nur in der installierten App verfügbar (nicht im Dev-Modus).",
       currentVersion: app.getVersion()
     });
     return false;
