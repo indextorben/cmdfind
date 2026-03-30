@@ -123,7 +123,7 @@
       }
 
       .update-row {
-        margin-top: 10px;
+        margin-top: 8px;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -597,6 +597,20 @@
         gap: 6px;
       }
 
+      .setting-block {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(9, 14, 28, 0.42);
+        padding: 10px;
+      }
+
+      .setting-block-title {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: #bfd0f8;
+        font-weight: 700;
+      }
+
       .setting label {
         font-size: 12px;
         color: var(--muted);
@@ -791,15 +805,6 @@
             <p id="subtitleText" class="subtitle">Finde passende Befehle schneller und mit klarerer Oberfläche.</p>
           </div>
           <div class="tools">
-            <button id="updateCheckBtn" class="update-btn" aria-label="Check for updates">Update pruefen</button>
-            <button id="updateDownloadBtn" class="update-btn" aria-label="Download update" hidden>Update laden</button>
-            <button id="updateInstallBtn" class="update-btn" aria-label="Install update" hidden>Jetzt installieren</button>
-            <button id="terminalToggle" class="terminal-toggle" aria-label="Open terminal">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="m4 7 4 4-4 4"></path>
-                <path d="M10 15h10"></path>
-              </svg>
-            </button>
             <button id="settingsToggle" class="settings-toggle" aria-label="Open settings">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z"></path>
@@ -843,9 +848,6 @@
         </div>
 
         <div id="status" class="status"></div>
-        <div class="update-row">
-        <div id="updateStatus" class="update-status">Version wird geladen...</div>
-        </div>
       </section>
 
       <section id="terminalPanel" class="terminal-panel" hidden>
@@ -924,6 +926,23 @@
         <div class="setting">
           <label id="terminalFontLabel" for="terminalFontSize">Terminal-Schriftgröße</label>
           <input id="terminalFontSize" type="range" min="13" max="24" value="16" />
+        </div>
+
+        <div class="setting setting-block">
+          <h3 id="systemTitle" class="setting-block-title">System</h3>
+          <div class="setting">
+            <label id="updatesLabel">Updates</label>
+            <div class="update-row">
+              <button id="updateCheckBtn" class="update-btn" aria-label="Check for updates">Update prüfen</button>
+              <button id="updateDownloadBtn" class="update-btn" aria-label="Download update" hidden>Update laden</button>
+              <button id="updateInstallBtn" class="update-btn" aria-label="Install update" hidden>Jetzt installieren</button>
+            </div>
+            <div id="updateStatus" class="update-status">Version wird geladen...</div>
+          </div>
+          <div class="setting">
+            <label id="terminalLabel" for="terminalToggle">Terminal</label>
+            <button id="terminalToggle" class="secondary">Terminal öffnen</button>
+          </div>
         </div>
 
         <div class="setting setting-readme">
