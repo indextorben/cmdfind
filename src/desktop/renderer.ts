@@ -89,6 +89,11 @@ const searchHistoryList = document.querySelector<HTMLDivElement>("#searchHistory
 const historyTitle = document.querySelector<HTMLSpanElement>("#historyTitle")!;
 const historyClearBtn = document.querySelector<HTMLButtonElement>("#historyClearBtn")!;
 const settingsToggle = document.querySelector<HTMLButtonElement>("#settingsToggle")!;
+const searchShortcutInput = document.querySelector<HTMLInputElement>("#searchShortcut")!;
+const searchShortcutReset = document.querySelector<HTMLButtonElement>("#searchShortcutReset")!;
+const searchShortcutLabel = document.querySelector<HTMLElement>("#searchShortcutLabel")!;
+const searchShortcutHint = document.querySelector<HTMLElement>("#searchShortcutHint")!;
+const searchShortcutConflict = document.querySelector<HTMLElement>("#searchShortcutConflict")!;
 const updateCheckBtn = document.querySelector<HTMLButtonElement>("#updateCheckBtn")!;
 const updateDownloadBtn = document.querySelector<HTMLButtonElement>("#updateDownloadBtn")!;
 const updateInstallBtn = document.querySelector<HTMLButtonElement>("#updateInstallBtn")!;
@@ -117,6 +122,7 @@ const terminalInlineHint = document.querySelector<HTMLDivElement>("#terminalInli
 
 type UiSettings = {
   uiLanguage: "de" | "en";
+  searchShortcut: string;
   theme: "midnight" | "slate" | "graphite" | "sunset" | "emerald" | "amber" | "cyber" | "rose";
   accent: string;
   scale: number;
@@ -135,6 +141,7 @@ const favoritesKey = "cmdfind:desktop:favorites";
 const searchHistoryKey = "cmdfind:desktop:search-history";
 const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite", "sunset", "emerald", "amber", "cyber", "rose"];
 let currentUiLanguage: "de" | "en" = "de";
+let currentSearchShortcut = "";
 const renderedEntriesByKey = new Map<string, DesktopSearchResponse["results"][number]["entry"]>();
 const i18n = {
   de: {
@@ -149,6 +156,13 @@ const i18n = {
     historyTitle: "Suchverlauf",
     historyClear: "Leeren",
     runInTerminal: "Ausführen",
+    searchShortcutLabel: "Such-Shortcut",
+    searchShortcutReset: "Standard",
+    searchShortcutHint: "Klicken und Tastenkombination drücken, z. B. Strg+B oder Cmd+B. Hinweis: Fn ist nicht immer als Shortcut erkennbar.",
+    shortcutFocused: "Suchfeld über Shortcut fokussiert",
+    shortcutConflictPrefix: "Konflikt mit reservierter Tastenkombination:",
+    shortcutConflictTerminalInterrupt: "Terminal: laufenden Befehl abbrechen",
+    shortcutConflictLineClear: "Terminal: Eingabezeile löschen",
     context: "aktuellen Kontext bevorzugen",
     refresh: "lokalen Index neu laden",
     disableLocal: "lokalen Index deaktivieren",
@@ -203,6 +217,13 @@ const i18n = {
     historyTitle: "Search history",
     historyClear: "Clear",
     runInTerminal: "Run",
+    searchShortcutLabel: "Search shortcut",
+    searchShortcutReset: "Default",
+    searchShortcutHint: "Click and press a key combo, e.g. Ctrl+B or Cmd+B. Note: Fn is not always detectable as a shortcut.",
+    shortcutFocused: "Search focused via shortcut",
+    shortcutConflictPrefix: "Conflict with reserved shortcut:",
+    shortcutConflictTerminalInterrupt: "Terminal: interrupt running command",
+    shortcutConflictLineClear: "Terminal: clear input line",
     context: "prefer current context",
     refresh: "refresh local index",
     disableLocal: "disable local index",
@@ -249,6 +270,92 @@ const i18n = {
 
 function t(key: keyof typeof i18n.de): string {
   return i18n[currentUiLanguage][key];
+}
+
+function isMacPlatform(): boolean {
+  return /mac/i.test(navigator.platform);
+}
+
+function getDefaultSearchShortcut(): string {
+  return isMacPlatform() ? "Meta+B" : "Control+B";
+}
+
+function normalizeShortcut(shortcut: string): string {
+  const raw = shortcut
+    .split("+")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!raw.length) return getDefaultSearchShortcut();
+
+  const normalized = new Set<string>();
+  for (const part of raw) {
+    const low = part.toLowerCase();
+    if (low === "cmd" || low === "command" || low === "meta") normalized.add("Meta");
+    else if (low === "ctrl" || low === "control" || low === "strg") normalized.add("Control");
+    else if (low === "alt" || low === "option") normalized.add("Alt");
+    else if (low === "shift" || low === "umschalt") normalized.add("Shift");
+    else if (low.length === 1) normalized.add(low.toUpperCase());
+    else normalized.add(part.toUpperCase());
+  }
+
+  const mods = ["Meta", "Control", "Alt", "Shift"].filter((mod) => normalized.has(mod));
+  for (const mod of mods) normalized.delete(mod);
+  const key = Array.from(normalized).at(0) ?? "B";
+  return [...mods, key].join("+");
+}
+
+function shortcutToLabel(shortcut: string): string {
+  return normalizeShortcut(shortcut)
+    .split("+")
+    .map((part) => {
+      if (part === "Meta") return isMacPlatform() ? "Cmd" : "Meta";
+      if (part === "Control") return isMacPlatform() ? "Ctrl" : "Strg";
+      if (part === "Alt") return "Alt";
+      if (part === "Shift") return isMacPlatform() ? "Shift" : "Umschalt";
+      return part;
+    })
+    .join("+");
+}
+
+function eventToShortcut(event: KeyboardEvent): string | null {
+  if (event.repeat) return null;
+  if (["Meta", "Control", "Alt", "Shift"].includes(event.key)) return null;
+
+  const key = event.key === " " ? "Space" : event.key.length === 1 ? event.key.toUpperCase() : event.key.toUpperCase();
+  const parts: string[] = [];
+  if (event.metaKey) parts.push("Meta");
+  if (event.ctrlKey) parts.push("Control");
+  if (event.altKey) parts.push("Alt");
+  if (event.shiftKey) parts.push("Shift");
+  if (!parts.length) return null;
+  parts.push(key);
+  return normalizeShortcut(parts.join("+"));
+}
+
+function getReservedShortcutConflict(shortcut: string): string | null {
+  const normalized = normalizeShortcut(shortcut);
+  const reserved = new Map<string, keyof typeof i18n.de>([
+    ["Control+C", "shortcutConflictTerminalInterrupt"],
+    ["Meta+BACKSPACE", "shortcutConflictLineClear"]
+  ]);
+  const hit = reserved.get(normalized);
+  return hit ? t(hit) : null;
+}
+
+function setShortcutConflict(message: string | null): void {
+  if (!message) {
+    searchShortcutConflict.hidden = true;
+    searchShortcutConflict.textContent = "";
+    return;
+  }
+  searchShortcutConflict.hidden = false;
+  searchShortcutConflict.textContent = `${t("shortcutConflictPrefix")} ${message}`;
+}
+
+function setShortcutInput(shortcut: string): void {
+  currentSearchShortcut = normalizeShortcut(shortcut);
+  searchShortcutInput.dataset.shortcut = currentSearchShortcut;
+  searchShortcutInput.value = shortcutToLabel(currentSearchShortcut);
 }
 
 function getReadmeHtml(lang: "de" | "en"): string {
@@ -300,6 +407,13 @@ function applyUiLanguage(lang: "de" | "en"): void {
   exportFavoritesBtn.textContent = t("exportFavorites");
   historyTitle.textContent = t("historyTitle");
   historyClearBtn.textContent = t("historyClear");
+  searchShortcutLabel.textContent = t("searchShortcutLabel");
+  searchShortcutReset.textContent = t("searchShortcutReset");
+  searchShortcutHint.textContent = t("searchShortcutHint");
+  if (!searchShortcutConflict.hidden && searchShortcutConflict.textContent) {
+    const conflict = getReservedShortcutConflict(currentSearchShortcut);
+    setShortcutConflict(conflict);
+  }
   (document.getElementById("labelContext") as HTMLElement | null)?.replaceChildren(t("context"));
   (document.getElementById("labelRefresh") as HTMLElement | null)?.replaceChildren(t("refresh"));
   (document.getElementById("labelDisableLocal") as HTMLElement | null)?.replaceChildren(t("disableLocal"));
@@ -328,6 +442,7 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("updatesLabel") as HTMLElement | null)?.replaceChildren(t("updatesLabel"));
   readmeTitle.replaceChildren(t("readmeTitle"));
   readmeContent.innerHTML = getReadmeHtml(lang);
+  setShortcutInput(currentSearchShortcut || getDefaultSearchShortcut());
   renderSearchHistory();
 }
 let terminalStarted = false;
@@ -427,6 +542,7 @@ function readUiSettings(): UiSettings {
     if (!raw) {
       return {
         uiLanguage: "de",
+        searchShortcut: getDefaultSearchShortcut(),
         theme: "midnight",
         accent: "#6ca5ff",
         scale: 100,
@@ -438,6 +554,7 @@ function readUiSettings(): UiSettings {
     const parsed = JSON.parse(raw) as Partial<UiSettings>;
     return {
       uiLanguage: parsed.uiLanguage === "en" ? "en" : "de",
+      searchShortcut: normalizeShortcut(typeof parsed.searchShortcut === "string" ? parsed.searchShortcut : getDefaultSearchShortcut()),
       theme: supportedThemes.includes(parsed.theme as UiSettings["theme"])
         ? (parsed.theme as UiSettings["theme"])
         : "midnight",
@@ -450,6 +567,7 @@ function readUiSettings(): UiSettings {
   } catch {
     return {
       uiLanguage: "de",
+      searchShortcut: getDefaultSearchShortcut(),
       theme: "midnight",
       accent: "#6ca5ff",
       scale: 100,
@@ -465,6 +583,7 @@ function saveUiSettings(settings: UiSettings): void {
 }
 
 function applyUiSettings(settings: UiSettings): void {
+  currentSearchShortcut = normalizeShortcut(settings.searchShortcut);
   applyUiLanguage(settings.uiLanguage);
   document.body.dataset.theme = settings.theme;
   if (settings.theme === "midnight") {
@@ -484,6 +603,8 @@ function applyUiSettings(settings: UiSettings): void {
   root.style.setProperty("--terminal-font-size", `${clampedTerminalFontSize}px`);
 
   uiLanguageSelect.value = settings.uiLanguage;
+  setShortcutInput(currentSearchShortcut);
+  setShortcutConflict(getReservedShortcutConflict(currentSearchShortcut));
   themeSelect.value = settings.theme;
   accentColor.value = settings.accent;
   uiScale.value = String(clampedScale);
@@ -829,6 +950,23 @@ settingsClose.addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (event) => {
+  const target = event.target as HTMLElement | null;
+  const inTextInput =
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement;
+  const incomingShortcut = eventToShortcut(event);
+  if (incomingShortcut && incomingShortcut === currentSearchShortcut && target !== searchShortcutInput) {
+    event.preventDefault();
+    if (!inTextInput || target === queryInput) {
+      setSettingsOpen(false);
+      queryInput.focus();
+      queryInput.select();
+      statusEl.textContent = t("shortcutFocused");
+      return;
+    }
+  }
+
   if (event.key === "Escape" && !terminalPanel.hidden) {
     setTerminalOpen(false);
     return;
@@ -848,6 +986,7 @@ document.addEventListener("click", (event) => {
 function syncUiSettings(): void {
   const settings: UiSettings = {
     uiLanguage: uiLanguageSelect.value === "en" ? "en" : "de",
+    searchShortcut: normalizeShortcut(searchShortcutInput.dataset.shortcut || currentSearchShortcut || getDefaultSearchShortcut()),
     theme: themeSelect.value as UiSettings["theme"],
     accent: accentColor.value,
     scale: Number(uiScale.value),
@@ -866,6 +1005,30 @@ uiScale.addEventListener("input", syncUiSettings);
 radiusScale.addEventListener("input", syncUiSettings);
 terminalHeightRange.addEventListener("input", syncUiSettings);
 terminalFontSizeRange.addEventListener("input", syncUiSettings);
+
+searchShortcutInput.addEventListener("focus", () => {
+  searchShortcutInput.select();
+});
+
+searchShortcutInput.addEventListener("keydown", (event) => {
+  event.preventDefault();
+  const captured = eventToShortcut(event);
+  if (!captured) return;
+  const conflict = getReservedShortcutConflict(captured);
+  if (conflict) {
+    setShortcutConflict(conflict);
+    return;
+  }
+  setShortcutConflict(null);
+  setShortcutInput(captured);
+  syncUiSettings();
+});
+
+searchShortcutReset.addEventListener("click", () => {
+  setShortcutConflict(null);
+  setShortcutInput(getDefaultSearchShortcut());
+  syncUiSettings();
+});
 
 function appendTerminalOutput(chunk: string): void {
   const normalized = chunk

@@ -687,6 +687,39 @@
         padding: 0;
       }
 
+      .shortcut-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .shortcut-input {
+        letter-spacing: 0.02em;
+      }
+
+      .shortcut-reset {
+        border-radius: 9px;
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
+      .setting-help {
+        font-size: 11px;
+        color: #98a8cc;
+        line-height: 1.35;
+      }
+
+      .setting-conflict {
+        font-size: 11px;
+        color: #ff9aaa;
+        line-height: 1.35;
+      }
+
+      .setting-conflict[hidden] {
+        display: none;
+      }
+
       .theme-preview {
         display: flex;
         gap: 6px;
@@ -967,6 +1000,16 @@
             <option value="de">Deutsch</option>
             <option value="en">English</option>
           </select>
+        </div>
+
+        <div class="setting">
+          <label id="searchShortcutLabel" for="searchShortcut">Such-Shortcut</label>
+          <div class="shortcut-row">
+            <input id="searchShortcut" class="shortcut-input" type="text" readonly value="Ctrl+B" />
+            <button id="searchShortcutReset" type="button" class="shortcut-reset">Standard</button>
+          </div>
+          <div id="searchShortcutHint" class="setting-help">Klicken und Tastenkombination drücken, z. B. Ctrl+B oder Cmd+B.</div>
+          <div id="searchShortcutConflict" class="setting-conflict" hidden></div>
         </div>
 
         <div class="setting">
