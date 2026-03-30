@@ -619,6 +619,39 @@
         color: var(--muted);
       }
 
+      .setting-readme {
+        margin-top: 4px;
+      }
+
+      .readme-content {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(9, 14, 28, 0.62);
+        padding: 10px 12px;
+        max-height: 230px;
+        overflow: auto;
+        color: #cfdbfa;
+        font-size: 12px;
+        line-height: 1.52;
+      }
+
+      .readme-content p {
+        margin: 0 0 8px;
+      }
+
+      .readme-content p:last-child {
+        margin-bottom: 0;
+      }
+
+      .readme-content ul {
+        margin: 0 0 8px;
+        padding-left: 18px;
+      }
+
+      .readme-content li {
+        margin: 0 0 4px;
+      }
+
       body[data-theme="slate"] {
         --bg: #0f141f;
         --line: rgba(176, 196, 220, 0.2);
@@ -891,6 +924,11 @@
         <div class="setting">
           <label id="terminalFontLabel" for="terminalFontSize">Terminal-Schriftgröße</label>
           <input id="terminalFontSize" type="range" min="13" max="24" value="16" />
+        </div>
+
+        <div class="setting setting-readme">
+          <label id="readmeTitle" for="readmeContent">README</label>
+          <div id="readmeContent" class="readme-content"></div>
         </div>
       </div>
     </aside>

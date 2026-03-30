@@ -90,6 +90,8 @@ const updateStatusEl = document.querySelector<HTMLDivElement>("#updateStatus")!;
 const settingsPanel = document.querySelector<HTMLElement>("#settingsPanel")!;
 const settingsClose = document.querySelector<HTMLButtonElement>("#settingsClose")!;
 const uiLanguageSelect = document.querySelector<HTMLSelectElement>("#uiLanguage")!;
+const readmeTitle = document.querySelector<HTMLElement>("#readmeTitle")!;
+const readmeContent = document.querySelector<HTMLElement>("#readmeContent")!;
 const themeSelect = document.querySelector<HTMLSelectElement>("#themeSelect")!;
 const accentColor = document.querySelector<HTMLInputElement>("#accentColor")!;
 const uiScale = document.querySelector<HTMLInputElement>("#uiScale")!;
@@ -150,6 +152,7 @@ const i18n = {
     radiusLabel: "Rundungen",
     terminalHeightLabel: "Terminal-Höhe",
     terminalFontLabel: "Terminal-Schriftgröße",
+    readmeTitle: "README: So funktioniert cmdfind",
     suggestionPrefix: "Vorschlag:",
     suggestionApply: "Tab zum Übernehmen",
     saveLanguageNeedPick: "Bitte de oder en auswählen, um die Standardsprache zu speichern.",
@@ -188,6 +191,7 @@ const i18n = {
     radiusLabel: "Radius",
     terminalHeightLabel: "Terminal height",
     terminalFontLabel: "Terminal font size",
+    readmeTitle: "README: How cmdfind works",
     suggestionPrefix: "Suggestion:",
     suggestionApply: "Tab to apply",
     saveLanguageNeedPick: "Select de or en to save default language.",
@@ -201,6 +205,43 @@ const i18n = {
 
 function t(key: keyof typeof i18n.de): string {
   return i18n[currentUiLanguage][key];
+}
+
+function getReadmeHtml(lang: "de" | "en"): string {
+  if (lang === "de") {
+    return `
+      <p><strong>Was macht cmdfind?</strong><br />cmdfind hilft dir dabei, passende Terminal-Befehle schnell zu finden und direkt auszuführen.</p>
+      <ul>
+        <li><strong>Suchen:</strong> Gib einen Begriff ein und nutze <em>Suchen</em> oder <em>Alle lokal</em>.</li>
+        <li><strong>Filter:</strong> Stelle Sprache, Plattform, Shell und Limit ein.</li>
+        <li><strong>Kontext:</strong> Mit <em>aktuellen Kontext bevorzugen</em> werden passendere Treffer angezeigt.</li>
+        <li><strong>Standardsprache:</strong> Wähle <code>de</code> oder <code>en</code> und speichere sie als Standard für die Suche.</li>
+      </ul>
+      <ul>
+        <li><strong>Integriertes Terminal:</strong> Öffne es über das Terminal-Symbol rechts oben.</li>
+        <li><strong>Autovervollständigung:</strong> Vorschläge erscheinen beim Tippen; mit <code>Tab</code> übernimmst du sie.</li>
+        <li><strong>Verlauf:</strong> Mit Pfeil hoch/runter navigierst du durch vorherige Befehle.</li>
+        <li><strong>Clear:</strong> Löscht die Ausgabe, der aktuelle Prompt bleibt erhalten.</li>
+      </ul>
+      <p><strong>Einstellungen:</strong> Hier kannst du App-Sprache, Theme, Akzentfarbe, UI-Größe und Terminal-Darstellung anpassen.</p>
+    `;
+  }
+  return `
+    <p><strong>What does cmdfind do?</strong><br />cmdfind helps you find the right terminal commands quickly and run them directly.</p>
+    <ul>
+      <li><strong>Search:</strong> Enter a term and use <em>Search</em> or <em>All Local</em>.</li>
+      <li><strong>Filters:</strong> Configure language, platform, shell, and result limit.</li>
+      <li><strong>Context:</strong> With <em>prefer current context</em>, results are better matched.</li>
+      <li><strong>Default language:</strong> Pick <code>de</code> or <code>en</code> and save it as default for search.</li>
+    </ul>
+    <ul>
+      <li><strong>Integrated terminal:</strong> Open it using the terminal icon in the top-right.</li>
+      <li><strong>Autocomplete:</strong> Suggestions appear while typing; press <code>Tab</code> to accept.</li>
+      <li><strong>History:</strong> Use Up/Down arrows to navigate previous commands.</li>
+      <li><strong>Clear:</strong> Clears output while keeping the current prompt.</li>
+    </ul>
+    <p><strong>Settings:</strong> You can customize app language, theme, accent color, UI size, and terminal appearance.</p>
+  `;
 }
 
 function applyUiLanguage(lang: "de" | "en"): void {
@@ -235,6 +276,8 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("radiusLabel") as HTMLElement | null)?.replaceChildren(t("radiusLabel"));
   (document.getElementById("terminalHeightLabel") as HTMLElement | null)?.replaceChildren(t("terminalHeightLabel"));
   (document.getElementById("terminalFontLabel") as HTMLElement | null)?.replaceChildren(t("terminalFontLabel"));
+  readmeTitle.replaceChildren(t("readmeTitle"));
+  readmeContent.innerHTML = getReadmeHtml(lang);
 }
 let terminalStarted = false;
 const terminalHistory: string[] = [];
