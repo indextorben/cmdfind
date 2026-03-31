@@ -532,6 +532,47 @@ let terminalInputHadFocus = false;
 let suppressInlineAutocompleteOnce = false;
 let pendingInlineSuggestion: string | null = null;
 let terminalSuggestionRequestId = 0;
+let terminalSegment = 1;
+let terminalScrollRaf = 0;
+
+type TerminalBufferPolicy = {
+  hardLimit: number;
+  keepRows: number;
+  profile: "low" | "balanced" | "high";
+};
+
+function detectTerminalBufferPolicy(): TerminalBufferPolicy {
+  const cores = Number(navigator.hardwareConcurrency || 4);
+  const mem = Number((navigator as Navigator & { deviceMemory?: number }).deviceMemory || 0);
+
+  if (cores <= 4 || (mem > 0 && mem <= 4)) {
+    return { hardLimit: 1400, keepRows: 1000, profile: "low" };
+  }
+  if (cores >= 10 || mem >= 12) {
+    return { hardLimit: 4200, keepRows: 3400, profile: "high" };
+  }
+  return { hardLimit: 2600, keepRows: 2000, profile: "balanced" };
+}
+
+const terminalBufferPolicy = detectTerminalBufferPolicy();
+
+function scrollTerminalToBottom(): void {
+  if (terminalScrollRaf) {
+    cancelAnimationFrame(terminalScrollRaf);
+  }
+  terminalScrollRaf = requestAnimationFrame(() => {
+    terminalScrollRaf = 0;
+    terminalOutput.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" });
+    const end = terminalOutput.querySelector<HTMLElement>('[data-term-end="1"]');
+    end?.scrollIntoView({ block: "end", inline: "nearest" });
+    // Some repaint cycles update height one tick later (long wrapped lines, heavy output).
+    requestAnimationFrame(() => {
+      terminalOutput.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" });
+      const endAgain = terminalOutput.querySelector<HTMLElement>('[data-term-end="1"]');
+      endAgain?.scrollIntoView({ block: "end", inline: "nearest" });
+    });
+  });
+}
 
 function renderUpdateState(state: UpdateState): void {
   updateStatusEl.textContent = state.message || `Version ${state.currentVersion}`;
@@ -1224,8 +1265,14 @@ function appendTerminalOutput(chunk: string): void {
     terminalCursorCol += 1;
   }
 
-  if (terminalRows.length > 2200) {
-    terminalRows = terminalRows.slice(-1800);
+  if (terminalRows.length > terminalBufferPolicy.hardLimit) {
+    const nextSegment = terminalSegment + 1;
+    const rolloverLine =
+      currentUiLanguage === "de"
+        ? `[CMDFIND] Terminal ${nextSegment} gestartet (auto, Profil: ${terminalBufferPolicy.profile}). Verlauf gekürzt, Session läuft weiter.`
+        : `[CMDFIND] Terminal ${nextSegment} started (auto, profile: ${terminalBufferPolicy.profile}). Log trimmed, session continues.`;
+    terminalRows = [rolloverLine, ...terminalRows.slice(-terminalBufferPolicy.keepRows)];
+    terminalSegment = nextSegment;
   }
 
   const plainOutput = terminalRows.join("\n");
@@ -1236,14 +1283,15 @@ function appendTerminalOutput(chunk: string): void {
     .replace(/\b(warn|warning)\b/gi, '<span class="term-warn">$1</span>')
     .replace(/\b(success|done|completed|ready)\b/gi, '<span class="term-ok">$1</span>');
 
-  terminalOutput.innerHTML = withMarkup;
-  terminalOutput.scrollTop = terminalOutput.scrollHeight;
+  terminalOutput.innerHTML = `${withMarkup}<span data-term-end="1"></span>`;
+  scrollTerminalToBottom();
   updateTerminalCurrentDirHintFromOutput(plainOutput);
 }
 
 function clearTerminalDisplay(): void {
   terminalRows = [""];
   terminalCursorCol = 0;
+  terminalSegment = 1;
   terminalOutput.textContent = "";
 }
 
