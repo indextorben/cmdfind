@@ -562,14 +562,10 @@ function scrollTerminalToBottom(): void {
   }
   terminalScrollRaf = requestAnimationFrame(() => {
     terminalScrollRaf = 0;
-    const lineHeight = Number.parseFloat(getComputedStyle(terminalOutput).lineHeight || "0") || 20;
-    const comfortOffset = Math.round(lineHeight * 1.8); // keep ~2 lines visible above the hard end
-    const targetTop = Math.max(0, terminalOutput.scrollHeight - terminalOutput.clientHeight - comfortOffset);
-    terminalOutput.scrollTo({ top: targetTop, behavior: "auto" });
+    terminalOutput.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" });
     // Some repaint cycles update height one tick later (long wrapped lines, heavy output).
     requestAnimationFrame(() => {
-      const secondTargetTop = Math.max(0, terminalOutput.scrollHeight - terminalOutput.clientHeight - comfortOffset);
-      terminalOutput.scrollTo({ top: secondTargetTop, behavior: "auto" });
+      terminalOutput.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" });
     });
   });
 }
