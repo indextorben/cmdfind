@@ -437,10 +437,10 @@ function showQuickSearchWindowWithPrefill(prefill?: string): void {
 
 function createMacTrayImage(): Electron.NativeImage {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-      <g fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="6"></circle>
-        <path d="m16 16 5 5"></path>
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24">
+      <g fill="none" stroke="black" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10.4" cy="10.4" r="6.2"></circle>
+        <path d="m15.7 15.7 4.7 4.7"></path>
       </g>
     </svg>
   `;
@@ -465,8 +465,12 @@ function setupMacMenuBar(): void {
   }
   if (tray && !tray.isDestroyed()) return;
 
-  tray = new Tray(createMacTrayImage());
+  const trayImage = createMacTrayImage();
+  tray = new Tray(trayImage);
   tray.setToolTip("cmdfind");
+  // Fallback text keeps the status item visible even if the icon is dimmed/hidden by macOS styling.
+  tray.setTitle("cf");
+  tray.setImage(trayImage);
 
   const buildTrayMenu = (): Electron.Menu => {
     return Menu.buildFromTemplate([
