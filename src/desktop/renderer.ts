@@ -562,14 +562,14 @@ function scrollTerminalToBottom(): void {
   }
   terminalScrollRaf = requestAnimationFrame(() => {
     terminalScrollRaf = 0;
-    terminalOutput.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" });
-    const end = terminalOutput.querySelector<HTMLElement>('[data-term-end="1"]');
-    end?.scrollIntoView({ block: "end", inline: "nearest" });
+    const lineHeight = Number.parseFloat(getComputedStyle(terminalOutput).lineHeight || "0") || 20;
+    const comfortOffset = Math.round(lineHeight * 1.8); // keep ~2 lines visible above the hard end
+    const targetTop = Math.max(0, terminalOutput.scrollHeight - terminalOutput.clientHeight - comfortOffset);
+    terminalOutput.scrollTo({ top: targetTop, behavior: "auto" });
     // Some repaint cycles update height one tick later (long wrapped lines, heavy output).
     requestAnimationFrame(() => {
-      terminalOutput.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior: "auto" });
-      const endAgain = terminalOutput.querySelector<HTMLElement>('[data-term-end="1"]');
-      endAgain?.scrollIntoView({ block: "end", inline: "nearest" });
+      const secondTargetTop = Math.max(0, terminalOutput.scrollHeight - terminalOutput.clientHeight - comfortOffset);
+      terminalOutput.scrollTo({ top: secondTargetTop, behavior: "auto" });
     });
   });
 }
@@ -1281,7 +1281,12 @@ function appendTerminalOutput(chunk: string): void {
     .replace(/(^|\n)([^\n]*[%$#]\s)([^\n]*)/g, '$1<span class="term-prompt">$2</span><span class="term-command">$3</span>')
     .replace(/\b(error|failed|not found|permission denied|denied)\b/gi, '<span class="term-error">$1</span>')
     .replace(/\b(warn|warning)\b/gi, '<span class="term-warn">$1</span>')
-    .replace(/\b(success|done|completed|ready)\b/gi, '<span class="term-ok">$1</span>');
+    .replace(/\b(success|done|completed|ready)\b/gi, '<span class="term-ok">$1</span>')
+    .replace(
+      /(^|\n)\s*C M D F I N D\s*(?=\n|$)/g,
+      '$1<span class="term-cmdfind-badge"><span class="term-cmdfind-c">C</span> <span class="term-cmdfind-m">M</span> <span class="term-cmdfind-d">D</span> <span class="term-cmdfind-f">F</span> <span class="term-cmdfind-i">I</span> <span class="term-cmdfind-n">N</span> <span class="term-cmdfind-d2">D</span></span>'
+    )
+    .replace(/(^|\n)\s*command finder\s*(?=\n|$)/gi, '$1<span class="term-cmdfind-sub">command finder</span>');
 
   terminalOutput.innerHTML = `${withMarkup}<span data-term-end="1"></span>`;
   scrollTerminalToBottom();
@@ -1341,6 +1346,14 @@ function renderTerminalSuggestions(): void {
     })
     .join("");
   terminalSuggest.hidden = false;
+}
+
+function updateSuggestionIndexFromButton(button: HTMLButtonElement): void {
+  const items = Array.from(terminalSuggest.querySelectorAll<HTMLButtonElement>(".terminal-suggest-item"));
+  const idx = items.indexOf(button);
+  if (idx < 0 || idx === terminalSuggestionIndex) return;
+  terminalSuggestionIndex = idx;
+  renderTerminalSuggestions();
 }
 
 async function updateTerminalSuggestions(prefixRaw: string): Promise<void> {
@@ -1623,9 +1636,17 @@ terminalSuggest.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const btn = target.closest<HTMLButtonElement>(".terminal-suggest-item");
   if (!btn) return;
+  updateSuggestionIndexFromButton(btn);
   const cmd = btn.getAttribute("data-cmd");
   if (!cmd) return;
   applyTerminalSuggestion(cmd);
+});
+
+terminalSuggest.addEventListener("mousemove", (event) => {
+  const target = event.target as HTMLElement;
+  const btn = target.closest<HTMLButtonElement>(".terminal-suggest-item");
+  if (!btn) return;
+  updateSuggestionIndexFromButton(btn);
 });
 
 terminalClear.addEventListener("click", () => {

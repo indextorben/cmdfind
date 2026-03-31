@@ -437,15 +437,15 @@ function showQuickSearchWindowWithPrefill(prefill?: string): void {
 
 function createMacTrayImage(): Electron.NativeImage {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
-      <g fill="none" stroke="black" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2.5" y="4.2" width="17" height="13.8" rx="2.8"></rect>
-        <path d="M6.4 9.1L8.9 11L6.4 12.9"></path>
-        <path d="M10.7 13H14.8"></path>
-      </g>
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
+      <rect x="1.3" y="2.2" width="15.4" height="12.4" rx="2.3" fill="black"/>
+      <path d="M5.1 6.5L7 8L5.1 9.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <rect x="8.6" y="9.1" width="3.8" height="1.2" rx="0.6" fill="white"/>
     </svg>
   `;
-  const image = nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+  const image = nativeImage
+    .createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`)
+    .resize({ width: 18, height: 18, quality: "best" });
   image.setTemplateImage(true);
   return image;
 }
@@ -472,6 +472,7 @@ function setupMacMenuBar(): void {
   // Icon-only tray item (no text label in menu bar).
   tray.setTitle("");
   tray.setImage(trayImage);
+  tray.setPressedImage(trayImage);
 
   const buildTrayMenu = (): Electron.Menu => {
     return Menu.buildFromTemplate([
@@ -715,7 +716,8 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
       : ["-i"];
   const terminalEnv: NodeJS.ProcessEnv = {
     ...process.env,
-    TERM: "xterm-256color"
+    TERM: "xterm-256color",
+    CMDFIND_PLAIN_BANNER: "1"
   };
   if (process.platform === "darwin") {
     const currentPath = terminalEnv.PATH || process.env.PATH || "";
