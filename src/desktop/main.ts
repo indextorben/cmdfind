@@ -437,16 +437,16 @@ function showQuickSearchWindowWithPrefill(prefill?: string): void {
 
 function createMacTrayImage(): Electron.NativeImage {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-      <rect x="1.3" y="2.2" width="15.4" height="12.4" rx="2.3" fill="black"/>
-      <path d="M5.1 6.5L7 8L5.1 9.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-      <rect x="8.6" y="9.1" width="3.8" height="1.2" rx="0.6" fill="white"/>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+      <rect x="1.5" y="3" width="17" height="13.5" rx="2.5" fill="#0c162d" stroke="#79a8ff" stroke-width="1.3"/>
+      <path d="M5.6 7.1L7.8 8.75L5.6 10.4" stroke="#d7e7ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <rect x="9.2" y="10" width="4.4" height="1.25" rx="0.6" fill="#d7e7ff"/>
     </svg>
   `;
   const image = nativeImage
     .createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`)
     .resize({ width: 18, height: 18, quality: "best" });
-  image.setTemplateImage(true);
+  image.setTemplateImage(false);
   return image;
 }
 
