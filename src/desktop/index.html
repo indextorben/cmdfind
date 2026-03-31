@@ -24,6 +24,9 @@
         --radius-sm: 10px;
         --terminal-height: 420px;
         --terminal-font-size: 16px;
+        --terminal-head-height: 42px;
+        --terminal-form-height: 74px;
+        --terminal-inline-hint-height: 20px;
         --shadow: 0 20px 44px rgba(5, 9, 20, 0.48);
       }
 
@@ -548,8 +551,21 @@
       }
 
       body[data-terminal-mode="focus"] .terminal-output {
-        height: calc(100vh - 124px);
+        height: calc(100vh - var(--terminal-head-height) - var(--terminal-form-height) - var(--terminal-inline-hint-height));
+        padding-bottom: calc(var(--terminal-form-height) + var(--terminal-inline-hint-height) + 14px);
         background: #04070f;
+      }
+
+      body[data-terminal-mode="focus"] .terminal-inline-hint {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: var(--terminal-form-height);
+        min-height: var(--terminal-inline-hint-height);
+        padding: 6px 14px 4px;
+        border-top: 1px solid rgba(120, 146, 200, 0.2);
+        background: #060a13;
+        z-index: 4;
       }
 
       body[data-terminal-mode="focus"] .terminal-form {
@@ -565,7 +581,7 @@
       body[data-terminal-mode="focus"] .terminal-suggest {
         left: 14px;
         right: 14px;
-        bottom: 72px;
+        bottom: calc(var(--terminal-form-height) + var(--terminal-inline-hint-height) + 8px);
       }
 
       .card {
