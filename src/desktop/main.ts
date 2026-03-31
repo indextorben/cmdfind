@@ -468,8 +468,8 @@ function setupMacMenuBar(): void {
   const trayImage = createMacTrayImage();
   tray = new Tray(trayImage);
   tray.setToolTip("cmdfind");
-  // Fallback text keeps the status item visible even if the icon is dimmed/hidden by macOS styling.
-  tray.setTitle("cf");
+  // Icon-only tray item (no text label in menu bar).
+  tray.setTitle("");
   tray.setImage(trayImage);
 
   const buildTrayMenu = (): Electron.Menu => {
@@ -716,6 +716,17 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
     ...process.env,
     TERM: "xterm-256color"
   };
+  if (process.platform === "darwin") {
+    const currentPath = terminalEnv.PATH || process.env.PATH || "";
+    const pathParts = currentPath.split(path.delimiter).filter(Boolean);
+    const brewCandidates = ["/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin", "/usr/local/sbin"];
+    for (const candidate of brewCandidates) {
+      if (!pathParts.includes(candidate) && fs.existsSync(candidate)) {
+        pathParts.unshift(candidate);
+      }
+    }
+    terminalEnv.PATH = pathParts.join(path.delimiter);
+  }
   if (normalizedShell.includes("zsh")) {
     terminalEnv.PROMPT = "%n %~ %# ";
   }

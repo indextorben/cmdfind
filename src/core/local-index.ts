@@ -105,7 +105,11 @@ function runLines(command: string): string[] {
   try {
     const out = execSync(command, {
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
+      stdio: ["ignore", "pipe", "ignore"],
+      env: {
+        ...process.env,
+        PATH: getAugmentedPath(process.env.PATH || "")
+      }
     });
     return out
       .split(/\r?\n/)
@@ -114,6 +118,19 @@ function runLines(command: string): string[] {
   } catch {
     return [];
   }
+}
+
+function getAugmentedPath(basePath: string): string {
+  const parts = basePath.split(path.delimiter).filter(Boolean);
+  if (process.platform === "darwin") {
+    const brewCandidates = ["/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin", "/usr/local/sbin"];
+    for (const candidate of brewCandidates) {
+      if (!parts.includes(candidate) && existsSync(candidate)) {
+        parts.unshift(candidate);
+      }
+    }
+  }
+  return parts.join(path.delimiter);
 }
 
 function getCacheTtlMs(): number {
@@ -265,7 +282,7 @@ function createTemplateRecord(
 }
 
 function scanPathExecutables(platform: Platform, shell: Shell): LocalCommandRecord[] {
-  const pathVar = process.env.PATH || "";
+  const pathVar = getAugmentedPath(process.env.PATH || "");
   const dirs = pathVar.split(path.delimiter).filter(Boolean);
   const names = new Set<string>();
 
