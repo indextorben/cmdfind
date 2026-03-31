@@ -437,10 +437,11 @@ function showQuickSearchWindowWithPrefill(prefill?: string): void {
 
 function createMacTrayImage(): Electron.NativeImage {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24">
-      <g fill="none" stroke="black" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="10.4" cy="10.4" r="6.2"></circle>
-        <path d="m15.7 15.7 4.7 4.7"></path>
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+      <g fill="none" stroke="black" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2.5" y="4.2" width="17" height="13.8" rx="2.8"></rect>
+        <path d="M6.4 9.1L8.9 11L6.4 12.9"></path>
+        <path d="M10.7 13H14.8"></path>
       </g>
     </svg>
   `;
