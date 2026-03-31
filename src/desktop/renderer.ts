@@ -535,6 +535,10 @@ let pendingInlineSuggestion: string | null = null;
 let terminalSuggestionRequestId = 0;
 let terminalSegment = 1;
 let terminalScrollRaf = 0;
+let terminalLayoutRaf = 0;
+let cachedTerminalHeadHeight = 0;
+let cachedTerminalFormHeight = 0;
+let cachedTerminalInlineHintHeight = 0;
 
 type TerminalBufferPolicy = {
   hardLimit: number;
@@ -594,11 +598,11 @@ function renderUpdateState(state: UpdateState): void {
 function renderInlineHint(): void {
   if (!pendingInlineSuggestion) {
     terminalInlineHint.textContent = "";
-    syncTerminalLayoutMetrics();
+    queueTerminalLayoutMetricsSync();
     return;
   }
   terminalInlineHint.textContent = `${t("suggestionPrefix")} ${pendingInlineSuggestion}  |  ${t("suggestionApply")}`;
-  syncTerminalLayoutMetrics();
+  queueTerminalLayoutMetricsSync();
 }
 
 function updateTerminalCurrentDirHintFromOutput(plainOutput: string): void {
@@ -634,9 +638,26 @@ function syncTerminalLayoutMetrics(): void {
   const formHeight = Math.ceil(terminalForm.getBoundingClientRect().height || 74);
   const inlineHintHeight = Math.ceil(terminalInlineHint.getBoundingClientRect().height || 20);
   const root = document.documentElement;
-  root.style.setProperty("--terminal-head-height", `${headHeight}px`);
-  root.style.setProperty("--terminal-form-height", `${formHeight}px`);
-  root.style.setProperty("--terminal-inline-hint-height", `${inlineHintHeight}px`);
+  if (cachedTerminalHeadHeight !== headHeight) {
+    root.style.setProperty("--terminal-head-height", `${headHeight}px`);
+    cachedTerminalHeadHeight = headHeight;
+  }
+  if (cachedTerminalFormHeight !== formHeight) {
+    root.style.setProperty("--terminal-form-height", `${formHeight}px`);
+    cachedTerminalFormHeight = formHeight;
+  }
+  if (cachedTerminalInlineHintHeight !== inlineHintHeight) {
+    root.style.setProperty("--terminal-inline-hint-height", `${inlineHintHeight}px`);
+    cachedTerminalInlineHintHeight = inlineHintHeight;
+  }
+}
+
+function queueTerminalLayoutMetricsSync(): void {
+  if (terminalLayoutRaf) return;
+  terminalLayoutRaf = window.requestAnimationFrame(() => {
+    terminalLayoutRaf = 0;
+    syncTerminalLayoutMetrics();
+  });
 }
 
 const quickSettingsFields: HTMLElement[] = [
@@ -761,6 +782,7 @@ function applyUiSettings(settings: UiSettings): void {
     void window.cmdfindDesktop.terminalResize(size.cols, size.rows);
   }
   queueWrapScrollState();
+  queueTerminalLayoutMetricsSync();
 }
 
 function escapeHtml(text: string): string {
@@ -1669,7 +1691,7 @@ terminalStop.addEventListener("click", async () => {
 });
 
 window.addEventListener("resize", () => {
-  syncTerminalLayoutMetrics();
+  queueTerminalLayoutMetricsSync();
   if (!terminalStarted) return;
   const size = getTerminalSizeEstimate();
   void window.cmdfindDesktop.terminalResize(size.cols, size.rows);
@@ -1732,11 +1754,8 @@ applyUiSettings(readUiSettings());
 setReadmeExpanded(false);
 renderSearchHistory();
 queueWrapScrollState();
-syncTerminalLayoutMetrics();
+queueTerminalLayoutMetricsSync();
 window.addEventListener("resize", queueWrapScrollState);
-new ResizeObserver(() => syncTerminalLayoutMetrics()).observe(terminalHead);
-new ResizeObserver(() => syncTerminalLayoutMetrics()).observe(terminalForm);
-new ResizeObserver(() => syncTerminalLayoutMetrics()).observe(terminalInlineHint);
 new MutationObserver(() => queueWrapScrollState()).observe(wrapEl, {
   childList: true,
   subtree: true,
