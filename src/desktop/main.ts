@@ -892,7 +892,43 @@ ipcMain.handle("cmdfind:update-install", () => {
   if (!app.isPackaged) {
     return false;
   }
-  autoUpdater.quitAndInstall();
+  appIsQuitting = true;
+  globalShortcut.unregisterAll();
+
+  try {
+    if (quickSearchWindow && !quickSearchWindow.isDestroyed()) {
+      quickSearchWindow.destroy();
+      quickSearchWindow = null;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.destroy();
+      mainWindow = null;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (tray && !tray.isDestroyed()) {
+      tray.destroy();
+      tray = null;
+    }
+  } catch {
+    // ignore
+  }
+
+  setTimeout(() => {
+    try {
+      autoUpdater.quitAndInstall(false, false);
+    } catch {
+      app.quit();
+    }
+  }, 120);
   return true;
 });
 
@@ -923,6 +959,10 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  appIsQuitting = true;
 });
 
 app.on("will-quit", () => {
