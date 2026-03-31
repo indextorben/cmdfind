@@ -240,6 +240,30 @@ function createRecord(
   };
 }
 
+function createTemplateRecord(
+  commandTemplate: string,
+  platform: Platform,
+  shell: Shell,
+  category: string,
+  dangerLevel: WarningLevel,
+  descriptionDe: string,
+  descriptionEn: string,
+  example?: string
+): LocalCommandRecord {
+  return {
+    name: commandTemplate,
+    source_type: "external",
+    os: platform,
+    shell,
+    locally_available: true,
+    description_de: descriptionDe,
+    description_en: descriptionEn,
+    category,
+    example: example ?? commandTemplate,
+    danger_level: dangerLevel
+  };
+}
+
 function scanPathExecutables(platform: Platform, shell: Shell): LocalCommandRecord[] {
   const pathVar = process.env.PATH || "";
   const dirs = pathVar.split(path.delimiter).filter(Boolean);
@@ -266,6 +290,227 @@ function scanPathExecutables(platform: Platform, shell: Shell): LocalCommandReco
   }
 
   return [...names].map((name) => createRecord(name, "external", platform, shell));
+}
+
+function scanInstalledToolTemplates(
+  executableRecords: LocalCommandRecord[],
+  platform: Platform,
+  shell: Shell
+): LocalCommandRecord[] {
+  const available = new Set(executableRecords.map((record) => record.name.toLowerCase()));
+  const has = (...commands: string[]): boolean => commands.some((command) => available.has(command.toLowerCase()));
+  const templates: LocalCommandRecord[] = [];
+
+  if (has("python", "python3")) {
+    const pythonCmd = has("python3") ? "python3" : "python";
+    templates.push(
+      createTemplateRecord(
+        `${pythonCmd} -m venv .venv`,
+        platform,
+        shell,
+        "runtime",
+        "safe",
+        "Erstellt eine lokale Python-Umgebung (.venv).",
+        "Creates a local Python virtual environment (.venv)."
+      ),
+      createTemplateRecord(
+        `${pythonCmd} -m pip install <paket>`,
+        platform,
+        shell,
+        "runtime",
+        "safe",
+        "Installiert ein Python-Paket über pip.",
+        "Installs a Python package via pip."
+      )
+    );
+  }
+
+  if (has("pip", "pip3")) {
+    const pipCmd = has("pip3") ? "pip3" : "pip";
+    templates.push(
+      createTemplateRecord(
+        `${pipCmd} install <paket>`,
+        platform,
+        shell,
+        "runtime",
+        "safe",
+        "Installiert ein Python-Paket.",
+        "Installs a Python package."
+      ),
+      createTemplateRecord(
+        `${pipCmd} install -r requirements.txt`,
+        platform,
+        shell,
+        "runtime",
+        "safe",
+        "Installiert alle Abhängigkeiten aus requirements.txt.",
+        "Installs all dependencies from requirements.txt."
+      )
+    );
+  }
+
+  if (has("npm")) {
+    templates.push(
+      createTemplateRecord(
+        "npm install <paket>",
+        platform,
+        shell,
+        "runtime",
+        "safe",
+        "Installiert ein npm-Paket im aktuellen Projekt.",
+        "Installs an npm package in the current project."
+      ),
+      createTemplateRecord(
+        "npm install -g <paket>",
+        platform,
+        shell,
+        "runtime",
+        "careful",
+        "Installiert ein npm-Paket global auf dem System.",
+        "Installs an npm package globally on the system."
+      )
+    );
+  }
+
+  if (platform !== "windows" && has("apt", "apt-get")) {
+    templates.push(
+      createTemplateRecord(
+        "apt install <paket>",
+        platform,
+        shell,
+        "package",
+        "safe",
+        "Installiert ein Paket mit apt.",
+        "Installs a package with apt."
+      ),
+      createTemplateRecord(
+        "apt remove <paket>",
+        platform,
+        shell,
+        "package",
+        "careful",
+        "Entfernt ein Paket mit apt.",
+        "Removes a package with apt."
+      ),
+      createTemplateRecord(
+        "apt update && apt upgrade -y",
+        platform,
+        shell,
+        "package",
+        "careful",
+        "Aktualisiert Paketlisten und installiert Updates.",
+        "Updates package lists and installs upgrades."
+      )
+    );
+  }
+
+  if (platform !== "windows" && has("brew")) {
+    templates.push(
+      createTemplateRecord(
+        "brew install <paket>",
+        platform,
+        shell,
+        "package",
+        "safe",
+        "Installiert ein Paket mit Homebrew.",
+        "Installs a package with Homebrew."
+      ),
+      createTemplateRecord(
+        "brew update && brew upgrade",
+        platform,
+        shell,
+        "package",
+        "careful",
+        "Aktualisiert Homebrew und installierte Pakete.",
+        "Updates Homebrew and installed packages."
+      )
+    );
+  }
+
+  if (platform === "windows" && has("winget")) {
+    templates.push(
+      createTemplateRecord(
+        "winget install <paket>",
+        platform,
+        shell,
+        "package",
+        "safe",
+        "Installiert ein Paket über winget.",
+        "Installs a package via winget."
+      ),
+      createTemplateRecord(
+        "winget upgrade --all",
+        platform,
+        shell,
+        "package",
+        "careful",
+        "Aktualisiert alle winget-Pakete.",
+        "Upgrades all winget packages."
+      )
+    );
+  }
+
+  if (platform === "windows" && has("choco", "chocolatey")) {
+    templates.push(
+      createTemplateRecord(
+        "choco install <paket> -y",
+        platform,
+        shell,
+        "package",
+        "safe",
+        "Installiert ein Paket mit Chocolatey.",
+        "Installs a package with Chocolatey."
+      )
+    );
+  }
+
+  if (has("docker")) {
+    templates.push(
+      createTemplateRecord(
+        "docker ps",
+        platform,
+        shell,
+        "devops",
+        "safe",
+        "Zeigt laufende Docker-Container an.",
+        "Lists running Docker containers."
+      ),
+      createTemplateRecord(
+        "docker run --rm -it <image>",
+        platform,
+        shell,
+        "devops",
+        "careful",
+        "Startet testweise einen Container und entfernt ihn danach.",
+        "Runs a temporary container interactively."
+      )
+    );
+  }
+
+  if (has("git")) {
+    templates.push(
+      createTemplateRecord(
+        "git clone <repo-url>",
+        platform,
+        shell,
+        "dev",
+        "safe",
+        "Klonen eines Repositories.",
+        "Clones a repository."
+      ),
+      createTemplateRecord(
+        "git pull --rebase",
+        platform,
+        shell,
+        "dev",
+        "careful",
+        "Aktualisiert dein Repository mit Rebase.",
+        "Updates your repository using rebase."
+      )
+    );
+  }
+
+  return templates;
 }
 
 function scanBashBuiltins(platform: Platform): LocalCommandRecord[] {
@@ -392,7 +637,9 @@ export function discoverAndIndexLocalCommands(options: DiscoverOptions): LocalCo
   }
 
   const records: LocalCommandRecord[] = [];
-  records.push(...scanPathExecutables(options.platform, options.shell));
+  const executableRecords = scanPathExecutables(options.platform, options.shell);
+  records.push(...executableRecords);
+  records.push(...scanInstalledToolTemplates(executableRecords, options.platform, options.shell));
 
   if (options.shell === "bash") {
     records.push(...scanBashBuiltins(options.platform));
