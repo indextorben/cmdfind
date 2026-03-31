@@ -49,6 +49,8 @@ declare global {
       setDefaultLanguage: (language: "de" | "en") => Promise<boolean>;
       getGlobalSearchShortcut: () => Promise<string>;
       setGlobalSearchShortcut: (shortcut: string) => Promise<string>;
+      getMenuBarEnabled: () => Promise<boolean>;
+      setMenuBarEnabled: (enabled: boolean) => Promise<boolean>;
       updateGetState: () => Promise<UpdateState>;
       updateCheck: () => Promise<boolean>;
       updateDownload: () => Promise<boolean>;
@@ -68,6 +70,7 @@ declare global {
       onTerminalOutput: (callback: (chunk: string) => void) => () => void;
       onUpdateState: (callback: (state: UpdateState) => void) => () => void;
       onQuickFocus: (callback: () => void) => () => void;
+      onQuickPrefill: (callback: (value: string) => void) => () => void;
     };
   }
 }
@@ -101,6 +104,8 @@ const updateCheckBtn = document.querySelector<HTMLButtonElement>("#updateCheckBt
 const updateDownloadBtn = document.querySelector<HTMLButtonElement>("#updateDownloadBtn")!;
 const updateInstallBtn = document.querySelector<HTMLButtonElement>("#updateInstallBtn")!;
 const updateStatusEl = document.querySelector<HTMLDivElement>("#updateStatus")!;
+const menuBarEnabledCheckbox = document.querySelector<HTMLInputElement>("#menuBarEnabled")!;
+const menuBarLabel = document.querySelector<HTMLElement>("#menuBarLabel")!;
 const settingsPanel = document.querySelector<HTMLElement>("#settingsPanel")!;
 const settingsClose = document.querySelector<HTMLButtonElement>("#settingsClose")!;
 const uiLanguageSelect = document.querySelector<HTMLSelectElement>("#uiLanguage")!;
@@ -133,6 +138,7 @@ type UiSettings = {
   radius: number;
   terminalHeight: number;
   terminalFontSize: number;
+  menuBarEnabled: boolean;
 };
 
 type FavoriteItem = {
@@ -191,6 +197,7 @@ const i18n = {
     terminalHeightLabel: "Terminal-Höhe",
     terminalFontLabel: "Terminal-Schriftgröße",
     systemTitle: "System",
+    menuBarLabel: "Menüleisten-Icon (macOS)",
     updatesLabel: "Updates",
     readmeTitle: "Tutorial: So nutzt du cmdfind",
     suggestionPrefix: "Vorschlag:",
@@ -252,6 +259,7 @@ const i18n = {
     terminalHeightLabel: "Terminal height",
     terminalFontLabel: "Terminal font size",
     systemTitle: "System",
+    menuBarLabel: "Menu bar icon (macOS)",
     updatesLabel: "Updates",
     readmeTitle: "Tutorial: How to use cmdfind",
     suggestionPrefix: "Suggestion:",
@@ -451,6 +459,7 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("terminalHeightLabel") as HTMLElement | null)?.replaceChildren(t("terminalHeightLabel"));
   (document.getElementById("terminalFontLabel") as HTMLElement | null)?.replaceChildren(t("terminalFontLabel"));
   (document.getElementById("systemTitle") as HTMLElement | null)?.replaceChildren(t("systemTitle"));
+  menuBarLabel.replaceChildren(t("menuBarLabel"));
   (document.getElementById("updatesLabel") as HTMLElement | null)?.replaceChildren(t("updatesLabel"));
   readmeTitle.replaceChildren(t("readmeTitle"));
   readmeContent.innerHTML = getReadmeHtml(lang);
@@ -574,7 +583,8 @@ function readUiSettings(): UiSettings {
         scale: 100,
         radius: 14,
         terminalHeight: 420,
-        terminalFontSize: 16
+        terminalFontSize: 16,
+        menuBarEnabled: true
       };
     }
     const parsed = JSON.parse(raw) as Partial<UiSettings>;
@@ -588,7 +598,8 @@ function readUiSettings(): UiSettings {
       scale: typeof parsed.scale === "number" ? parsed.scale : 100,
       radius: typeof parsed.radius === "number" ? parsed.radius : 14,
       terminalHeight: typeof parsed.terminalHeight === "number" ? parsed.terminalHeight : 420,
-      terminalFontSize: typeof parsed.terminalFontSize === "number" ? parsed.terminalFontSize : 16
+      terminalFontSize: typeof parsed.terminalFontSize === "number" ? parsed.terminalFontSize : 16,
+      menuBarEnabled: typeof parsed.menuBarEnabled === "boolean" ? parsed.menuBarEnabled : true
     };
   } catch {
     return {
@@ -599,7 +610,8 @@ function readUiSettings(): UiSettings {
       scale: 100,
       radius: 14,
       terminalHeight: 420,
-      terminalFontSize: 16
+      terminalFontSize: 16,
+      menuBarEnabled: true
     };
   }
 }
@@ -637,6 +649,8 @@ function applyUiSettings(settings: UiSettings): void {
   radiusScale.value = String(settings.radius);
   terminalHeightRange.value = String(clampedTerminalHeight);
   terminalFontSizeRange.value = String(clampedTerminalFontSize);
+  menuBarEnabledCheckbox.checked = settings.menuBarEnabled;
+  menuBarEnabledCheckbox.disabled = !isMacPlatform();
 
   if (terminalStarted) {
     const size = getTerminalSizeEstimate();
@@ -1025,7 +1039,8 @@ function syncUiSettings(): void {
     scale: Number(uiScale.value),
     radius: Number(radiusScale.value),
     terminalHeight: Number(terminalHeightRange.value),
-    terminalFontSize: Number(terminalFontSizeRange.value)
+    terminalFontSize: Number(terminalFontSizeRange.value),
+    menuBarEnabled: menuBarEnabledCheckbox.checked
   };
   applyUiSettings(settings);
   saveUiSettings(settings);
@@ -1042,6 +1057,17 @@ function syncUiSettings(): void {
       }
     });
   }
+  if (isMacPlatform()) {
+    void window.cmdfindDesktop.setMenuBarEnabled(settings.menuBarEnabled).then((enabled) => {
+      if (enabled !== settings.menuBarEnabled) {
+        menuBarEnabledCheckbox.checked = enabled;
+        saveUiSettings({
+          ...settings,
+          menuBarEnabled: enabled
+        });
+      }
+    });
+  }
 }
 
 uiLanguageSelect.addEventListener("change", syncUiSettings);
@@ -1051,6 +1077,7 @@ uiScale.addEventListener("input", syncUiSettings);
 radiusScale.addEventListener("input", syncUiSettings);
 terminalHeightRange.addEventListener("input", syncUiSettings);
 terminalFontSizeRange.addEventListener("input", syncUiSettings);
+menuBarEnabledCheckbox.addEventListener("change", syncUiSettings);
 
 searchShortcutInput.addEventListener("focus", () => {
   searchShortcutInput.select();
@@ -1540,6 +1567,16 @@ void window.cmdfindDesktop.getGlobalSearchShortcut().then((shortcut) => {
   applyUiSettings(merged);
   saveUiSettings(merged);
 });
+
+if (isMacPlatform()) {
+  void window.cmdfindDesktop.getMenuBarEnabled().then((enabled) => {
+    const settings = readUiSettings();
+    if (settings.menuBarEnabled === enabled) return;
+    const merged = { ...settings, menuBarEnabled: enabled };
+    applyUiSettings(merged);
+    saveUiSettings(merged);
+  });
+}
 
 applyUiSettings(readUiSettings());
 renderSearchHistory();

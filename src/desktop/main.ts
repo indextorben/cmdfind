@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain } from "electron";
+import { app, BrowserWindow, clipboard, globalShortcut, ipcMain, Menu, Tray, nativeImage } from "electron";
 import electronUpdater from "electron-updater";
 import fs from "node:fs";
 import os from "node:os";
@@ -34,10 +34,12 @@ type TerminalSession =
 const terminalSessions = new Map<number, TerminalSession>();
 let mainWindow: BrowserWindow | null = null;
 let quickSearchWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 let updaterInitialized = false;
 let registeredGlobalShortcut: string | null = null;
 let appIsQuitting = false;
 const DEFAULT_GLOBAL_SEARCH_SHORTCUT = "CommandOrControl+B";
+const DEFAULT_MENU_BAR_ENABLED = true;
 
 type UpdateState =
   | { status: "idle"; message: string; currentVersion: string }
@@ -272,8 +274,10 @@ function createWindow(): void {
 
   window.on("close", (event) => {
     if (appIsQuitting) return;
-    event.preventDefault();
-    window.hide();
+    if (process.platform === "darwin" && isMenuBarEnabled()) {
+      event.preventDefault();
+      window.hide();
+    }
   });
 
   window.on("closed", () => {
@@ -416,12 +420,111 @@ function ensureQuickSearchWindow(): BrowserWindow {
 }
 
 function showQuickSearchWindow(): void {
+  showQuickSearchWindowWithPrefill();
+}
+
+function showQuickSearchWindowWithPrefill(prefill?: string): void {
   const window = ensureQuickSearchWindow();
   if (!window.isVisible()) {
     window.show();
   }
   window.focus();
   window.webContents.send("cmdfind:quick-focus");
+  if (typeof prefill === "string" && prefill.trim()) {
+    window.webContents.send("cmdfind:quick-prefill", prefill.trim());
+  }
+}
+
+function createMacTrayImage(): Electron.NativeImage {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+      <g fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="6"></circle>
+        <path d="m16 16 5 5"></path>
+      </g>
+    </svg>
+  `;
+  const image = nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+  image.setTemplateImage(true);
+  return image;
+}
+
+function isMenuBarEnabled(): boolean {
+  const cfg = loadConfig();
+  return cfg.menuBarEnabled !== false;
+}
+
+function setupMacMenuBar(): void {
+  if (process.platform !== "darwin") return;
+  if (!isMenuBarEnabled()) {
+    if (tray && !tray.isDestroyed()) {
+      tray.destroy();
+      tray = null;
+    }
+    return;
+  }
+  if (tray && !tray.isDestroyed()) return;
+
+  tray = new Tray(createMacTrayImage());
+  tray.setToolTip("cmdfind");
+
+  const buildTrayMenu = (): Electron.Menu => {
+    return Menu.buildFromTemplate([
+      {
+        label: "cmdfind öffnen",
+        click: () => {
+          if (!mainWindow || mainWindow.isDestroyed()) {
+            createWindow();
+            return;
+          }
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      },
+      {
+        label: "Quick Search öffnen",
+        click: () => {
+          showQuickSearchWindowWithPrefill();
+        }
+      },
+      {
+        label: "Zwischenablage suchen",
+        click: () => {
+          const clip = clipboard.readText().trim();
+          showQuickSearchWindowWithPrefill(clip);
+        }
+      },
+      { type: "separator" },
+      {
+        label: "Update prüfen",
+        click: () => {
+          if (app.isPackaged) {
+            void autoUpdater.checkForUpdates().catch(() => {
+              // Update events are surfaced in renderer if open.
+            });
+          }
+          if (!mainWindow || mainWindow.isDestroyed()) {
+            createWindow();
+            return;
+          }
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      },
+      { type: "separator" },
+      {
+        label: "cmdfind beenden",
+        click: () => {
+          app.quit();
+        }
+      }
+    ]);
+  };
+
+  tray.setContextMenu(buildTrayMenu());
+  tray.on("click", () => {
+    showQuickSearchWindowWithPrefill();
+  });
 }
 
 ipcMain.handle("cmdfind:search", (_event, request: DesktopSearchRequest) => {
@@ -451,6 +554,20 @@ ipcMain.handle("cmdfind:set-global-search-shortcut", (_event, shortcut: string) 
     desktopSearchShortcut: normalized
   });
   return normalized;
+});
+
+ipcMain.handle("cmdfind:get-menubar-enabled", () => {
+  return process.platform === "darwin" ? isMenuBarEnabled() : false;
+});
+
+ipcMain.handle("cmdfind:set-menubar-enabled", (_event, enabled: boolean) => {
+  const next = Boolean(enabled);
+  saveConfig({
+    ...loadConfig(),
+    menuBarEnabled: next
+  });
+  setupMacMenuBar();
+  return process.platform === "darwin" ? next : false;
 });
 
 function stripWrappingQuotes(value: string): string {
@@ -782,6 +899,7 @@ ipcMain.handle("cmdfind:update-install", () => {
 app.whenReady().then(() => {
   setupAutoUpdater();
   createWindow();
+  setupMacMenuBar();
   registerGlobalSearchShortcut(loadConfig().desktopSearchShortcut);
   if (app.isPackaged) {
     setTimeout(() => {
@@ -810,4 +928,8 @@ app.on("window-all-closed", () => {
 app.on("will-quit", () => {
   appIsQuitting = true;
   globalShortcut.unregisterAll();
+  if (tray) {
+    tray.destroy();
+    tray = null;
+  }
 });
