@@ -95,7 +95,16 @@
         pointer-events: auto;
       }
 
+      body.welcome-open::before {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
       body.settings-open {
+        overflow: hidden;
+      }
+
+      body.welcome-open {
         overflow: hidden;
       }
 
@@ -831,6 +840,18 @@
         margin-top: 4px;
       }
 
+      .readme-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      .readme-toggle-btn {
+        border-radius: 9px;
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+
       .readme-content {
         border: 1px solid var(--line);
         border-radius: 10px;
@@ -858,6 +879,76 @@
 
       .readme-content li {
         margin: 0 0 4px;
+      }
+
+      .readme-content[hidden] {
+        display: none;
+      }
+
+      .welcome-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+      }
+
+      .welcome-overlay[hidden] {
+        display: none;
+      }
+
+      .welcome-modal {
+        width: min(760px, calc(100vw - 32px));
+        max-height: min(82vh, 900px);
+        overflow: auto;
+        border: 1px solid var(--line-strong);
+        border-radius: 18px;
+        background:
+          linear-gradient(165deg, rgba(22, 32, 61, 0.94), rgba(10, 16, 32, 0.98)),
+          radial-gradient(900px 280px at 10% 0%, rgba(108, 165, 255, 0.22), transparent 66%);
+        box-shadow: 0 26px 56px rgba(4, 8, 18, 0.66);
+        padding: 18px 18px 16px;
+      }
+
+      .welcome-title {
+        margin: 0 0 6px;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+
+      .welcome-subtitle {
+        margin: 0 0 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .welcome-content {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: rgba(9, 14, 28, 0.56);
+        padding: 12px 14px;
+        font-size: 13px;
+        line-height: 1.55;
+        color: #dbe7ff;
+      }
+
+      .welcome-content p {
+        margin: 0 0 8px;
+      }
+
+      .welcome-content p:last-child {
+        margin-bottom: 0;
+      }
+
+      .welcome-actions {
+        margin-top: 12px;
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .welcome-start-btn {
+        min-width: 160px;
       }
 
       body[data-theme="slate"] {
@@ -1174,11 +1265,25 @@
         </div>
 
         <div class="setting setting-readme">
-          <label id="readmeTitle" for="readmeContent">Tutorial</label>
-          <div id="readmeContent" class="readme-content"></div>
+          <label id="readmeTitle" for="readmeToggleBtn">Tutorial</label>
+          <div class="readme-toggle-row">
+            <button id="readmeToggleBtn" type="button" class="readme-toggle-btn">Tutorial anzeigen</button>
+          </div>
+          <div id="readmeContent" class="readme-content" hidden></div>
         </div>
       </div>
     </aside>
+
+    <section id="welcomeOverlay" class="welcome-overlay" hidden>
+      <div class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+        <h2 id="welcomeTitle" class="welcome-title">Willkommen bei cmdfind</h2>
+        <p id="welcomeSubtitle" class="welcome-subtitle">Schnellstart für den ersten Start</p>
+        <div id="welcomeContent" class="welcome-content"></div>
+        <div class="welcome-actions">
+          <button id="welcomeStartBtn" type="button" class="welcome-start-btn">Los geht's</button>
+        </div>
+      </div>
+    </section>
 
     <script type="module" src="./renderer.js"></script>
   </body>

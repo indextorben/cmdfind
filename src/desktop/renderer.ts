@@ -110,7 +110,13 @@ const settingsPanel = document.querySelector<HTMLElement>("#settingsPanel")!;
 const settingsClose = document.querySelector<HTMLButtonElement>("#settingsClose")!;
 const uiLanguageSelect = document.querySelector<HTMLSelectElement>("#uiLanguage")!;
 const readmeTitle = document.querySelector<HTMLElement>("#readmeTitle")!;
+const readmeToggleBtn = document.querySelector<HTMLButtonElement>("#readmeToggleBtn")!;
 const readmeContent = document.querySelector<HTMLElement>("#readmeContent")!;
+const welcomeOverlay = document.querySelector<HTMLElement>("#welcomeOverlay")!;
+const welcomeTitle = document.querySelector<HTMLElement>("#welcomeTitle")!;
+const welcomeSubtitle = document.querySelector<HTMLElement>("#welcomeSubtitle")!;
+const welcomeContent = document.querySelector<HTMLElement>("#welcomeContent")!;
+const welcomeStartBtn = document.querySelector<HTMLButtonElement>("#welcomeStartBtn")!;
 const themeSelect = document.querySelector<HTMLSelectElement>("#themeSelect")!;
 const accentColor = document.querySelector<HTMLInputElement>("#accentColor")!;
 const uiScale = document.querySelector<HTMLInputElement>("#uiScale")!;
@@ -149,10 +155,12 @@ type FavoriteItem = {
 const uiSettingsKey = "cmdfind:desktop:ui-settings";
 const favoritesKey = "cmdfind:desktop:favorites";
 const searchHistoryKey = "cmdfind:desktop:search-history";
+const onboardingSeenKey = "cmdfind:desktop:onboarding-seen-v1";
 const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite", "sunset", "emerald", "amber", "cyber", "rose"];
 let currentUiLanguage: "de" | "en" = "de";
 let currentSearchShortcut = "";
 let lastSyncedGlobalShortcut = "";
+let readmeExpanded = false;
 const renderedEntriesByKey = new Map<string, DesktopSearchResponse["results"][number]["entry"]>();
 const i18n = {
   de: {
@@ -200,6 +208,11 @@ const i18n = {
     menuBarLabel: "Menüleisten-Icon (macOS)",
     updatesLabel: "Updates",
     readmeTitle: "Tutorial: So nutzt du cmdfind",
+    readmeToggleShow: "Tutorial anzeigen",
+    readmeToggleHide: "Tutorial ausblenden",
+    welcomeTitle: "Willkommen bei cmdfind",
+    welcomeSubtitle: "Schnellstart für den ersten Start",
+    welcomeStart: "Los geht's",
     suggestionPrefix: "Vorschlag:",
     suggestionApply: "Tab zum Übernehmen",
     saveLanguageNeedPick: "Bitte de oder en auswählen, um die Standardsprache zu speichern.",
@@ -262,6 +275,11 @@ const i18n = {
     menuBarLabel: "Menu bar icon (macOS)",
     updatesLabel: "Updates",
     readmeTitle: "Tutorial: How to use cmdfind",
+    readmeToggleShow: "Show tutorial",
+    readmeToggleHide: "Hide tutorial",
+    welcomeTitle: "Welcome to cmdfind",
+    welcomeSubtitle: "Quick start for your first launch",
+    welcomeStart: "Let's start",
     suggestionPrefix: "Suggestion:",
     suggestionApply: "Tab to apply",
     saveLanguageNeedPick: "Select de or en to save default language.",
@@ -415,6 +433,37 @@ function getReadmeHtml(lang: "de" | "en"): string {
   `;
 }
 
+function getWelcomeHtml(lang: "de" | "en"): string {
+  if (lang === "de") {
+    return `
+      <p><strong>Schritt 1:</strong> Gib oben einen Suchbegriff ein, z. B. <code>ping</code>, <code>nmap</code> oder <code>Datei löschen</code>.</p>
+      <p><strong>Schritt 2:</strong> Verfeinere mit Sprache, Plattform und Shell für präzisere Treffer.</p>
+      <p><strong>Schritt 3:</strong> Klicke bei einem Treffer auf <em>Ausführen</em>, um ihn im integrierten Terminal zu starten.</p>
+      <p><strong>Schritt 4:</strong> Speichere wichtige Befehle als Favoriten und exportiere sie bei Bedarf.</p>
+      <p><strong>Tipp:</strong> In den Einstellungen kannst du Shortcut, Design, Updates und weitere Optionen anpassen.</p>
+    `;
+  }
+  return `
+    <p><strong>Step 1:</strong> Enter a search query, e.g. <code>ping</code>, <code>nmap</code>, or <code>delete file</code>.</p>
+    <p><strong>Step 2:</strong> Refine results with language, platform, and shell for better matches.</p>
+    <p><strong>Step 3:</strong> Click <em>Run</em> on any result to execute it in the integrated terminal.</p>
+    <p><strong>Step 4:</strong> Save important commands as favorites and export them when needed.</p>
+    <p><strong>Tip:</strong> In Settings you can adjust shortcut, theme, updates, and more.</p>
+  `;
+}
+
+function setReadmeExpanded(expanded: boolean): void {
+  readmeExpanded = expanded;
+  readmeContent.hidden = !expanded;
+  readmeToggleBtn.textContent = expanded ? t("readmeToggleHide") : t("readmeToggleShow");
+  queueWrapScrollState();
+}
+
+function setWelcomeOpen(open: boolean): void {
+  welcomeOverlay.hidden = !open;
+  document.body.classList.toggle("welcome-open", open);
+}
+
 function applyUiLanguage(lang: "de" | "en"): void {
   currentUiLanguage = lang;
   (document.getElementById("subtitleText") as HTMLElement | null)?.replaceChildren(t("subtitle"));
@@ -463,6 +512,11 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("updatesLabel") as HTMLElement | null)?.replaceChildren(t("updatesLabel"));
   readmeTitle.replaceChildren(t("readmeTitle"));
   readmeContent.innerHTML = getReadmeHtml(lang);
+  readmeToggleBtn.textContent = readmeExpanded ? t("readmeToggleHide") : t("readmeToggleShow");
+  welcomeTitle.replaceChildren(t("welcomeTitle"));
+  welcomeSubtitle.replaceChildren(t("welcomeSubtitle"));
+  welcomeContent.innerHTML = getWelcomeHtml(lang);
+  welcomeStartBtn.textContent = t("welcomeStart");
   setShortcutInput(currentSearchShortcut || getDefaultSearchShortcut());
   renderSearchHistory();
 }
@@ -996,6 +1050,18 @@ settingsClose.addEventListener("click", () => {
   setSettingsOpen(false);
 });
 
+readmeToggleBtn.addEventListener("click", () => {
+  setReadmeExpanded(!readmeExpanded);
+});
+
+welcomeStartBtn.addEventListener("click", () => {
+  localStorage.setItem(onboardingSeenKey, "1");
+  setWelcomeOpen(false);
+  setSettingsOpen(false);
+  queryInput.focus();
+  queryInput.select();
+});
+
 document.addEventListener("keydown", (event) => {
   const target = event.target as HTMLElement | null;
   const inTextInput =
@@ -1016,6 +1082,11 @@ document.addEventListener("keydown", (event) => {
 
   if (event.key === "Escape" && !terminalPanel.hidden) {
     setTerminalOpen(false);
+    return;
+  }
+  if (event.key === "Escape" && !welcomeOverlay.hidden) {
+    localStorage.setItem(onboardingSeenKey, "1");
+    setWelcomeOpen(false);
     return;
   }
   if (event.key === "Escape") {
@@ -1579,6 +1650,7 @@ if (isMacPlatform()) {
 }
 
 applyUiSettings(readUiSettings());
+setReadmeExpanded(false);
 renderSearchHistory();
 queueWrapScrollState();
 window.addEventListener("resize", queueWrapScrollState);
@@ -1601,3 +1673,7 @@ window.cmdfindDesktop.onQuickFocus(() => {
 void window.cmdfindDesktop.updateGetState().then((state) => {
   renderUpdateState(state);
 });
+
+if (!localStorage.getItem(onboardingSeenKey)) {
+  setWelcomeOpen(true);
+}
