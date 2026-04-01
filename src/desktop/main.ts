@@ -580,7 +580,14 @@ function setupMacMenuBar(): void {
 
   tray.setContextMenu(buildTrayMenu());
   tray.on("click", () => {
-    showQuickSearchWindowWithPrefill();
+    if (tray && !tray.isDestroyed()) {
+      tray.popUpContextMenu();
+    }
+  });
+  tray.on("right-click", () => {
+    if (tray && !tray.isDestroyed()) {
+      tray.popUpContextMenu();
+    }
   });
 }
 
