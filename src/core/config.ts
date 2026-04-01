@@ -7,6 +7,7 @@ export interface CmdfindConfig {
   defaultLanguage?: Language;
   desktopSearchShortcut?: string;
   menuBarEnabled?: boolean;
+  backgroundModeEnabled?: boolean;
 }
 
 function getDefaultBaseDir(): string {

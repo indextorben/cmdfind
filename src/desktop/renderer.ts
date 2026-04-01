@@ -51,6 +51,8 @@ declare global {
       setGlobalSearchShortcut: (shortcut: string) => Promise<string>;
       getMenuBarEnabled: () => Promise<boolean>;
       setMenuBarEnabled: (enabled: boolean) => Promise<boolean>;
+      getBackgroundModeEnabled: () => Promise<boolean>;
+      setBackgroundModeEnabled: (enabled: boolean) => Promise<boolean>;
       updateGetState: () => Promise<UpdateState>;
       updateCheck: () => Promise<boolean>;
       updateDownload: () => Promise<boolean>;
@@ -106,6 +108,8 @@ const updateInstallBtn = document.querySelector<HTMLButtonElement>("#updateInsta
 const updateStatusEl = document.querySelector<HTMLDivElement>("#updateStatus")!;
 const menuBarEnabledCheckbox = document.querySelector<HTMLInputElement>("#menuBarEnabled")!;
 const menuBarLabel = document.querySelector<HTMLElement>("#menuBarLabel")!;
+const backgroundModeEnabledCheckbox = document.querySelector<HTMLInputElement>("#backgroundModeEnabled")!;
+const backgroundModeLabel = document.querySelector<HTMLElement>("#backgroundModeLabel")!;
 const settingsPanel = document.querySelector<HTMLElement>("#settingsPanel")!;
 const settingsClose = document.querySelector<HTMLButtonElement>("#settingsClose")!;
 const uiLanguageSelect = document.querySelector<HTMLSelectElement>("#uiLanguage")!;
@@ -146,6 +150,7 @@ type UiSettings = {
   terminalHeight: number;
   terminalFontSize: number;
   menuBarEnabled: boolean;
+  backgroundModeEnabled: boolean;
 };
 
 type FavoriteItem = {
@@ -207,6 +212,7 @@ const i18n = {
     terminalFontLabel: "Terminal-Schriftgröße",
     systemTitle: "System",
     menuBarLabel: "Menüleisten-Icon (macOS)",
+    backgroundModeLabel: "Im Hintergrund weiterlaufen (Shortcut aktiv)",
     updatesLabel: "Updates",
     readmeTitle: "Tutorial: So nutzt du cmdfind",
     readmeToggleShow: "Tutorial anzeigen",
@@ -274,6 +280,7 @@ const i18n = {
     terminalFontLabel: "Terminal font size",
     systemTitle: "System",
     menuBarLabel: "Menu bar icon (macOS)",
+    backgroundModeLabel: "Run in background (shortcut stays active)",
     updatesLabel: "Updates",
     readmeTitle: "Tutorial: How to use cmdfind",
     readmeToggleShow: "Show tutorial",
@@ -510,6 +517,7 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("terminalFontLabel") as HTMLElement | null)?.replaceChildren(t("terminalFontLabel"));
   (document.getElementById("systemTitle") as HTMLElement | null)?.replaceChildren(t("systemTitle"));
   menuBarLabel.replaceChildren(t("menuBarLabel"));
+  backgroundModeLabel.replaceChildren(t("backgroundModeLabel"));
   (document.getElementById("updatesLabel") as HTMLElement | null)?.replaceChildren(t("updatesLabel"));
   readmeTitle.replaceChildren(t("readmeTitle"));
   readmeContent.innerHTML = getReadmeHtml(lang);
@@ -709,7 +717,8 @@ function readUiSettings(): UiSettings {
         radius: 14,
         terminalHeight: 420,
         terminalFontSize: 16,
-        menuBarEnabled: true
+        menuBarEnabled: true,
+        backgroundModeEnabled: true
       };
     }
     const parsed = JSON.parse(raw) as Partial<UiSettings>;
@@ -724,7 +733,8 @@ function readUiSettings(): UiSettings {
       radius: typeof parsed.radius === "number" ? parsed.radius : 14,
       terminalHeight: typeof parsed.terminalHeight === "number" ? parsed.terminalHeight : 420,
       terminalFontSize: typeof parsed.terminalFontSize === "number" ? parsed.terminalFontSize : 16,
-      menuBarEnabled: typeof parsed.menuBarEnabled === "boolean" ? parsed.menuBarEnabled : true
+      menuBarEnabled: typeof parsed.menuBarEnabled === "boolean" ? parsed.menuBarEnabled : true,
+      backgroundModeEnabled: typeof parsed.backgroundModeEnabled === "boolean" ? parsed.backgroundModeEnabled : true
     };
   } catch {
     return {
@@ -736,7 +746,8 @@ function readUiSettings(): UiSettings {
       radius: 14,
       terminalHeight: 420,
       terminalFontSize: 16,
-      menuBarEnabled: true
+      menuBarEnabled: true,
+      backgroundModeEnabled: true
     };
   }
 }
@@ -775,6 +786,7 @@ function applyUiSettings(settings: UiSettings): void {
   terminalHeightRange.value = String(clampedTerminalHeight);
   terminalFontSizeRange.value = String(clampedTerminalFontSize);
   menuBarEnabledCheckbox.checked = settings.menuBarEnabled;
+  backgroundModeEnabledCheckbox.checked = settings.backgroundModeEnabled;
   menuBarEnabledCheckbox.disabled = !isMacPlatform();
 
   if (terminalStarted) {
@@ -1183,7 +1195,8 @@ function syncUiSettings(): void {
     radius: Number(radiusScale.value),
     terminalHeight: Number(terminalHeightRange.value),
     terminalFontSize: Number(terminalFontSizeRange.value),
-    menuBarEnabled: menuBarEnabledCheckbox.checked
+    menuBarEnabled: menuBarEnabledCheckbox.checked,
+    backgroundModeEnabled: backgroundModeEnabledCheckbox.checked
   };
   applyUiSettings(settings);
   saveUiSettings(settings);
@@ -1211,6 +1224,15 @@ function syncUiSettings(): void {
       }
     });
   }
+  void window.cmdfindDesktop.setBackgroundModeEnabled(settings.backgroundModeEnabled).then((enabled) => {
+    if (enabled !== settings.backgroundModeEnabled) {
+      backgroundModeEnabledCheckbox.checked = enabled;
+      saveUiSettings({
+        ...settings,
+        backgroundModeEnabled: enabled
+      });
+    }
+  });
 }
 
 uiLanguageSelect.addEventListener("change", syncUiSettings);
@@ -1221,6 +1243,7 @@ radiusScale.addEventListener("input", syncUiSettings);
 terminalHeightRange.addEventListener("input", syncUiSettings);
 terminalFontSizeRange.addEventListener("input", syncUiSettings);
 menuBarEnabledCheckbox.addEventListener("change", syncUiSettings);
+backgroundModeEnabledCheckbox.addEventListener("change", syncUiSettings);
 
 searchShortcutInput.addEventListener("focus", () => {
   searchShortcutInput.select();
@@ -1749,6 +1772,14 @@ if (isMacPlatform()) {
     saveUiSettings(merged);
   });
 }
+
+void window.cmdfindDesktop.getBackgroundModeEnabled().then((enabled) => {
+  const settings = readUiSettings();
+  if (settings.backgroundModeEnabled === enabled) return;
+  const merged = { ...settings, backgroundModeEnabled: enabled };
+  applyUiSettings(merged);
+  saveUiSettings(merged);
+});
 
 applyUiSettings(readUiSettings());
 setReadmeExpanded(false);

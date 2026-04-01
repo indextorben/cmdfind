@@ -322,7 +322,7 @@ function createWindow(): void {
 
   window.on("close", (event) => {
     if (appIsQuitting) return;
-    if (process.platform === "darwin" && isMenuBarEnabled()) {
+    if (process.platform === "darwin" && (isMenuBarEnabled() || isBackgroundModeEnabled())) {
       event.preventDefault();
       window.hide();
     }
@@ -504,6 +504,11 @@ function isMenuBarEnabled(): boolean {
   return cfg.menuBarEnabled !== false;
 }
 
+function isBackgroundModeEnabled(): boolean {
+  const cfg = loadConfig();
+  return cfg.backgroundModeEnabled !== false;
+}
+
 function setupMacMenuBar(): void {
   if (process.platform !== "darwin") return;
   if (!isMenuBarEnabled()) {
@@ -632,6 +637,19 @@ ipcMain.handle("cmdfind:set-menubar-enabled", (_event, enabled: boolean) => {
   });
   setupMacMenuBar();
   return process.platform === "darwin" ? next : false;
+});
+
+ipcMain.handle("cmdfind:get-background-mode-enabled", () => {
+  return isBackgroundModeEnabled();
+});
+
+ipcMain.handle("cmdfind:set-background-mode-enabled", (_event, enabled: boolean) => {
+  const next = Boolean(enabled);
+  saveConfig({
+    ...loadConfig(),
+    backgroundModeEnabled: next
+  });
+  return next;
 });
 
 function stripWrappingQuotes(value: string): string {
@@ -1050,7 +1068,7 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
+  if (process.platform !== "darwin" && !isBackgroundModeEnabled()) {
     app.quit();
   }
 });

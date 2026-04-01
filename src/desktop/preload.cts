@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld("cmdfindDesktop", {
   setGlobalSearchShortcut: (shortcut: string) => ipcRenderer.invoke("cmdfind:set-global-search-shortcut", shortcut),
   getMenuBarEnabled: () => ipcRenderer.invoke("cmdfind:get-menubar-enabled"),
   setMenuBarEnabled: (enabled: boolean) => ipcRenderer.invoke("cmdfind:set-menubar-enabled", enabled),
+  getBackgroundModeEnabled: () => ipcRenderer.invoke("cmdfind:get-background-mode-enabled"),
+  setBackgroundModeEnabled: (enabled: boolean) => ipcRenderer.invoke("cmdfind:set-background-mode-enabled", enabled),
   updateGetState: () => ipcRenderer.invoke("cmdfind:update-get-state"),
   updateCheck: () => ipcRenderer.invoke("cmdfind:update-check"),
   updateDownload: () => ipcRenderer.invoke("cmdfind:update-download"),
