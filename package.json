@@ -53,6 +53,13 @@
         "zip"
       ],
       "category": "public.app-category.developer-tools",
+      "extendInfo": {
+        "CFBundleName": "cmdfind",
+        "CFBundleDisplayName": "cmdfind",
+        "CFBundleExecutable": "cmdfind",
+        "LSApplicationCategoryType": "public.app-category.developer-tools",
+        "LSUIElement": false
+      },
       "hardenedRuntime": true,
       "gatekeeperAssess": false
     },

@@ -119,6 +119,52 @@ function setupAutoUpdater(): void {
   });
 }
 
+function getMacBundlePathFromExecPath(): string | null {
+  const marker = `${path.sep}Contents${path.sep}MacOS${path.sep}`;
+  const idx = process.execPath.lastIndexOf(marker);
+  if (idx <= 0) return null;
+  return process.execPath.slice(0, idx);
+}
+
+function refreshMacSpotlightIndex(): void {
+  if (process.platform !== "darwin" || !app.isPackaged) {
+    return;
+  }
+
+  const bundlePath = getMacBundlePathFromExecPath();
+  if (!bundlePath || !bundlePath.endsWith(".app")) {
+    return;
+  }
+
+  const lsregisterPath =
+    "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+  const mdimportPath = "/usr/bin/mdimport";
+
+  try {
+    if (fs.existsSync(lsregisterPath)) {
+      const child = spawn(lsregisterPath, ["-f", bundlePath], {
+        detached: true,
+        stdio: "ignore"
+      });
+      child.unref();
+    }
+  } catch {
+    // best effort only
+  }
+
+  try {
+    if (fs.existsSync(mdimportPath)) {
+      const child = spawn(mdimportPath, [bundlePath], {
+        detached: true,
+        stdio: "ignore"
+      });
+      child.unref();
+    }
+  } catch {
+    // best effort only
+  }
+}
+
 function resolveShellPath(): string {
   if (process.platform === "win32") {
     return "powershell.exe";
@@ -955,6 +1001,7 @@ app.whenReady().then(() => {
   setupAutoUpdater();
   createWindow();
   setupMacMenuBar();
+  setTimeout(refreshMacSpotlightIndex, 1200);
   registerGlobalSearchShortcut(loadConfig().desktopSearchShortcut);
   if (app.isPackaged) {
     setTimeout(() => {
