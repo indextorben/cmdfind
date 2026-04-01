@@ -23,14 +23,20 @@ contextBridge.exposeInMainWorld("cmdfindDesktop", {
   updateCheck: () => ipcRenderer.invoke("cmdfind:update-check"),
   updateDownload: () => ipcRenderer.invoke("cmdfind:update-download"),
   updateInstall: () => ipcRenderer.invoke("cmdfind:update-install"),
-  terminalStart: () => ipcRenderer.invoke("cmdfind:terminal-start"),
-  terminalInput: (input: string) => ipcRenderer.invoke("cmdfind:terminal-input", input),
-  terminalResize: (cols: number, rows: number) => ipcRenderer.invoke("cmdfind:terminal-resize", cols, rows),
-  terminalStop: () => ipcRenderer.invoke("cmdfind:terminal-stop"),
+  terminalStart: (sessionId?: number) => ipcRenderer.invoke("cmdfind:terminal-start", sessionId),
+  terminalInput: (input: string, sessionId?: number) => ipcRenderer.invoke("cmdfind:terminal-input", input, sessionId),
+  terminalResize: (cols: number, rows: number, sessionId?: number) => ipcRenderer.invoke("cmdfind:terminal-resize", cols, rows, sessionId),
+  terminalStop: (sessionId?: number) => ipcRenderer.invoke("cmdfind:terminal-stop", sessionId),
   listDirectories: (request: { cwdHint?: string; inputPath?: string; limit?: number; onlyDirectories?: boolean }) =>
     ipcRenderer.invoke("cmdfind:list-directories", request),
-  onTerminalOutput: (callback: (chunk: string) => void) => {
-    const listener = (_event: unknown, chunk: string) => callback(chunk);
+  onTerminalOutput: (callback: (sessionId: number, chunk: string) => void) => {
+    const listener = (_event: unknown, payload: { sessionId?: number; chunk?: string } | string) => {
+      if (typeof payload === "string") {
+        callback(1, payload);
+        return;
+      }
+      callback(Number(payload?.sessionId || 1), String(payload?.chunk ?? ""));
+    };
     ipcRenderer.on("cmdfind:terminal-output", listener);
     return () => ipcRenderer.removeListener("cmdfind:terminal-output", listener);
   },

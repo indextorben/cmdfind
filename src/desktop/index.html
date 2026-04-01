@@ -22,6 +22,8 @@
         --bg-bottom: #080d19;
         --radius: 14px;
         --radius-sm: 10px;
+        --font-ui-stack: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --font-terminal-stack: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         --terminal-height: 420px;
         --terminal-font-size: 16px;
         --terminal-head-height: 42px;
@@ -99,13 +101,31 @@
       body {
         margin: 0;
         min-height: 100%;
-        font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-family: var(--font-ui-stack);
         color: var(--text);
         background:
           radial-gradient(1000px 520px at -10% -20%, var(--bg-orb-a) 0%, transparent 60%),
           radial-gradient(1000px 520px at 110% -30%, var(--bg-orb-b) 0%, transparent 64%),
           linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
         overflow: hidden;
+      }
+
+      body[data-rendering="balanced"] {
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      body[data-rendering="smooth"] {
+        text-rendering: geometricPrecision;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      body[data-rendering="sharp"] {
+        text-rendering: optimizeSpeed;
+        -webkit-font-smoothing: auto;
+        -moz-osx-font-smoothing: auto;
       }
 
       body::before {
@@ -371,6 +391,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 10px;
         padding: 10px 12px;
         border-bottom: 1px solid var(--terminal-head-border);
         background: linear-gradient(180deg, var(--terminal-head-bg-a), var(--terminal-head-bg-b));
@@ -385,6 +406,72 @@
 
       .terminal-focus-right {
         letter-spacing: 0.08em;
+      }
+
+      .terminal-tabs-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+        justify-content: center;
+      }
+
+      .terminal-tabs {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+        padding: 2px;
+      }
+
+      .terminal-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid rgba(126, 160, 226, 0.26);
+        background: rgba(15, 23, 45, 0.78);
+        color: #c8d8fb;
+        border-radius: 9px;
+        padding: 4px 8px;
+        font-size: 12px;
+        white-space: nowrap;
+        max-width: 170px;
+      }
+
+      .terminal-tab.is-active {
+        background: rgba(103, 143, 221, 0.28);
+        border-color: rgba(152, 186, 246, 0.52);
+        color: #f4f8ff;
+      }
+
+      .terminal-tab-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .terminal-tab-close {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        padding: 0;
+        min-width: 14px;
+        line-height: 1;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      .terminal-tab-add {
+        border: 1px solid rgba(126, 160, 226, 0.32);
+        background: rgba(16, 24, 46, 0.82);
+        color: #d5e3ff;
+        border-radius: 9px;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        font-size: 16px;
+        line-height: 1;
       }
 
       .terminal-brand {
@@ -431,6 +518,7 @@
         overflow: auto;
         padding: 14px 14px 44px;
         margin: 0;
+        font-family: var(--font-terminal-stack);
         font-size: var(--terminal-font-size);
         line-height: 1.5;
         white-space: pre-wrap;
@@ -495,8 +583,14 @@
         background: var(--terminal-form-bg);
       }
 
+      #terminalInput,
+      #terminalRun {
+        font-family: var(--font-terminal-stack);
+      }
+
       .terminal-inline-hint {
         padding: 6px 14px 0;
+        font-family: var(--font-terminal-stack);
         font-size: 12px;
         color: var(--terminal-inline-hint-color);
         min-height: 18px;
@@ -530,6 +624,7 @@
       .terminal-suggest-item {
         width: 100%;
         text-align: left;
+        font-family: var(--font-terminal-stack);
         border: 0;
         border-top: 1px solid var(--terminal-suggest-item-border);
         border-radius: 0;
@@ -1223,6 +1318,10 @@
       <section id="terminalPanel" class="terminal-panel" hidden>
         <div class="terminal-head">
           <div id="terminalHeadLeft" class="terminal-focus-left">ESC for terminal</div>
+          <div class="terminal-tabs-wrap">
+            <div id="terminalTabs" class="terminal-tabs"></div>
+            <button id="terminalAddTab" type="button" class="terminal-tab-add" aria-label="Add tab">+</button>
+          </div>
           <div id="terminalHeadCenter" class="terminal-focus-center">New command session</div>
           <div class="terminal-actions">
             <button id="terminalClear" class="terminal-btn">Clear</button>
@@ -1265,6 +1364,21 @@
           <div id="searchShortcutConflict" class="setting-conflict" hidden></div>
         </div>
 
+        <div class="setting setting-wide">
+          <h3 id="safetyTitle" class="setting-block-title">Safety Layer</h3>
+          <div class="setting">
+            <label><input id="safetyEnabled" type="checkbox" checked /> <span id="safetyEnabledLabel">Riskante Befehle vor Ausführung bestätigen</span></label>
+          </div>
+          <div class="setting">
+            <label id="safetyModeLabel" for="safetyMode">Safety-Modus</label>
+            <select id="safetyMode">
+              <option id="safetyModeConfirmDangerous" value="confirm-dangerous">Nur gefährliche Befehle bestätigen</option>
+              <option id="safetyModeConfirmCareful" value="confirm-careful">Auch vorsichtige Befehle bestätigen</option>
+              <option id="safetyModeBlockDangerous" value="block-dangerous">Gefährliche Befehle blockieren</option>
+            </select>
+          </div>
+        </div>
+
         <div class="setting">
           <label id="themeLabel" for="themeSelect">Theme</label>
           <select id="themeSelect">
@@ -1281,6 +1395,46 @@
             <span id="chipDark" class="chip">Dark</span>
             <span id="chipContrast" class="chip">High Contrast</span>
           </div>
+        </div>
+
+        <div class="setting">
+          <label id="backgroundPresetLabel" for="backgroundPreset">Hintergrund-Modus</label>
+          <select id="backgroundPreset">
+            <option id="backgroundPresetAurora" value="aurora">Aurora</option>
+            <option id="backgroundPresetDeep" value="deep">Deep Space</option>
+            <option id="backgroundPresetSlate" value="slate">Slate Mist</option>
+            <option id="backgroundPresetSunset" value="sunset">Sunset Glow</option>
+            <option id="backgroundPresetPitch" value="pitch">Pitch Black</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label id="uiFontPresetLabel" for="uiFontPreset">UI-Schriftart</label>
+          <select id="uiFontPreset">
+            <option id="uiFontPresetJetBrains" value="jetbrains">JetBrains Mono</option>
+            <option id="uiFontPresetInter" value="inter">Inter</option>
+            <option id="uiFontPresetSF" value="sf">SF Pro</option>
+            <option id="uiFontPresetFira" value="fira">Fira Code</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label id="terminalFontPresetLabel" for="terminalFontPreset">Terminal-Schrift</label>
+          <select id="terminalFontPreset">
+            <option id="terminalFontPresetJetBrains" value="jetbrains">JetBrains Mono</option>
+            <option id="terminalFontPresetCascadia" value="cascadia">Cascadia Mono</option>
+            <option id="terminalFontPresetMenlo" value="menlo">Menlo</option>
+            <option id="terminalFontPresetFira" value="fira">Fira Code</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label id="renderingModeLabel" for="renderingMode">Rendering</label>
+          <select id="renderingMode">
+            <option id="renderingModeBalanced" value="balanced">Balanced</option>
+            <option id="renderingModeSmooth" value="smooth">Smooth</option>
+            <option id="renderingModeSharp" value="sharp">Sharp</option>
+          </select>
         </div>
 
         <div class="setting">

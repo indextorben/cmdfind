@@ -57,10 +57,10 @@ declare global {
       updateCheck: () => Promise<boolean>;
       updateDownload: () => Promise<boolean>;
       updateInstall: () => Promise<boolean>;
-      terminalStart: () => Promise<boolean>;
-      terminalInput: (input: string) => Promise<boolean>;
-      terminalResize: (cols: number, rows: number) => Promise<boolean>;
-      terminalStop: () => Promise<boolean>;
+      terminalStart: (sessionId?: number) => Promise<boolean>;
+      terminalInput: (input: string, sessionId?: number) => Promise<boolean>;
+      terminalResize: (cols: number, rows: number, sessionId?: number) => Promise<boolean>;
+      terminalStop: (sessionId?: number) => Promise<boolean>;
       listDirectories: (request: {
         cwdHint?: string;
         inputPath?: string;
@@ -69,7 +69,7 @@ declare global {
       }) => Promise<
         Array<{ value: string; label: string }>
       >;
-      onTerminalOutput: (callback: (chunk: string) => void) => () => void;
+      onTerminalOutput: (callback: (sessionId: number, chunk: string) => void) => () => void;
       onUpdateState: (callback: (state: UpdateState) => void) => () => void;
       onQuickFocus: (callback: () => void) => () => void;
       onQuickPrefill: (callback: (value: string) => void) => () => void;
@@ -102,6 +102,8 @@ const searchShortcutReset = document.querySelector<HTMLButtonElement>("#searchSh
 const searchShortcutLabel = document.querySelector<HTMLElement>("#searchShortcutLabel")!;
 const searchShortcutHint = document.querySelector<HTMLElement>("#searchShortcutHint")!;
 const searchShortcutConflict = document.querySelector<HTMLElement>("#searchShortcutConflict")!;
+const safetyEnabledCheckbox = document.querySelector<HTMLInputElement>("#safetyEnabled")!;
+const safetyModeSelect = document.querySelector<HTMLSelectElement>("#safetyMode")!;
 const updateCheckBtn = document.querySelector<HTMLButtonElement>("#updateCheckBtn")!;
 const updateDownloadBtn = document.querySelector<HTMLButtonElement>("#updateDownloadBtn")!;
 const updateInstallBtn = document.querySelector<HTMLButtonElement>("#updateInstallBtn")!;
@@ -122,6 +124,10 @@ const welcomeSubtitle = document.querySelector<HTMLElement>("#welcomeSubtitle")!
 const welcomeContent = document.querySelector<HTMLElement>("#welcomeContent")!;
 const welcomeStartBtn = document.querySelector<HTMLButtonElement>("#welcomeStartBtn")!;
 const themeSelect = document.querySelector<HTMLSelectElement>("#themeSelect")!;
+const backgroundPresetSelect = document.querySelector<HTMLSelectElement>("#backgroundPreset")!;
+const uiFontPresetSelect = document.querySelector<HTMLSelectElement>("#uiFontPreset")!;
+const terminalFontPresetSelect = document.querySelector<HTMLSelectElement>("#terminalFontPreset")!;
+const renderingModeSelect = document.querySelector<HTMLSelectElement>("#renderingMode")!;
 const accentColor = document.querySelector<HTMLInputElement>("#accentColor")!;
 const uiScale = document.querySelector<HTMLInputElement>("#uiScale")!;
 const radiusScale = document.querySelector<HTMLInputElement>("#radiusScale")!;
@@ -131,6 +137,8 @@ const terminalThemePresetSelect = document.querySelector<HTMLSelectElement>("#te
 const terminalToggle = document.querySelector<HTMLButtonElement>("#terminalToggle")!;
 const terminalPanel = document.querySelector<HTMLElement>("#terminalPanel")!;
 const terminalHead = document.querySelector<HTMLElement>(".terminal-head")!;
+const terminalTabs = document.querySelector<HTMLDivElement>("#terminalTabs")!;
+const terminalAddTab = document.querySelector<HTMLButtonElement>("#terminalAddTab")!;
 const terminalOutput = document.querySelector<HTMLPreElement>("#terminalOutput")!;
 const terminalForm = document.querySelector<HTMLFormElement>("#terminalForm")!;
 const terminalInput = document.querySelector<HTMLInputElement>("#terminalInput")!;
@@ -144,7 +152,13 @@ const wrapEl = document.querySelector<HTMLElement>(".wrap")!;
 type UiSettings = {
   uiLanguage: "de" | "en";
   searchShortcut: string;
+  safetyLayerEnabled: boolean;
+  safetyLayerMode: "confirm-dangerous" | "confirm-careful" | "block-dangerous";
   theme: "midnight" | "slate" | "graphite" | "sunset" | "emerald" | "amber" | "cyber" | "rose";
+  backgroundPreset: "aurora" | "deep" | "slate" | "sunset" | "pitch";
+  uiFontPreset: "jetbrains" | "inter" | "sf" | "fira";
+  terminalFontPreset: "jetbrains" | "cascadia" | "menlo" | "fira";
+  renderingMode: "balanced" | "smooth" | "sharp";
   terminalThemePreset: "classic" | "matrix" | "sunset" | "ice" | "mono";
   accent: string;
   scale: number;
@@ -165,7 +179,12 @@ const favoritesKey = "cmdfind:desktop:favorites";
 const searchHistoryKey = "cmdfind:desktop:search-history";
 const onboardingSeenKey = "cmdfind:desktop:onboarding-seen-v1";
 const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite", "sunset", "emerald", "amber", "cyber", "rose"];
+const supportedBackgroundPresets: UiSettings["backgroundPreset"][] = ["aurora", "deep", "slate", "sunset", "pitch"];
+const supportedUiFontPresets: UiSettings["uiFontPreset"][] = ["jetbrains", "inter", "sf", "fira"];
+const supportedTerminalFontPresets: UiSettings["terminalFontPreset"][] = ["jetbrains", "cascadia", "menlo", "fira"];
+const supportedRenderingModes: UiSettings["renderingMode"][] = ["balanced", "smooth", "sharp"];
 const supportedTerminalThemes: UiSettings["terminalThemePreset"][] = ["classic", "matrix", "sunset", "ice", "mono"];
+const supportedSafetyModes: UiSettings["safetyLayerMode"][] = ["confirm-dangerous", "confirm-careful", "block-dangerous"];
 let currentUiLanguage: "de" | "en" = "de";
 let currentSearchShortcut = "";
 let lastSyncedGlobalShortcut = "";
@@ -184,6 +203,24 @@ const i18n = {
     historyTitle: "Suchverlauf",
     historyClear: "Leeren",
     runInTerminal: "Ausführen",
+    safetyTitle: "Safety Layer",
+    safetyEnabledLabel: "Riskante Befehle vor Ausführung bestätigen",
+    safetyModeLabel: "Safety-Modus",
+    safetyModeConfirmDangerous: "Nur gefährliche Befehle bestätigen",
+    safetyModeConfirmCareful: "Auch vorsichtige Befehle bestätigen",
+    safetyModeBlockDangerous: "Gefährliche Befehle blockieren",
+    safetyBlockedDangerous: "Safety Layer hat einen gefährlichen Befehl blockiert:",
+    safetyCanceled: "Befehlsausführung durch Safety Layer abgebrochen.",
+    safetyReasonCatalogDangerous: "Befehl ist im Index als gefährlich markiert.",
+    safetyReasonCatalogCareful: "Befehl ist im Index als vorsichtig markiert.",
+    safetyReasonDelete: "Kann Dateien oder Verzeichnisse löschen.",
+    safetyReasonPrivilege: "Benötigt erhöhte Rechte (sudo/admin).",
+    safetyReasonSystem: "Kann das System herunterfahren/neustarten oder tief ändern.",
+    safetyReasonDisk: "Kann Datenträger/Dateisysteme überschreiben oder formatieren.",
+    safetyReasonProcess: "Kann laufende Prozesse hart beenden.",
+    safetyConfirmDangerousTitle: "Gefährlicher Befehl erkannt",
+    safetyConfirmCarefulTitle: "Vorsicht bei diesem Befehl",
+    safetyConfirmQuestion: "Trotzdem ausführen?",
     searchShortcutLabel: "Such-Shortcut",
     searchShortcutReset: "Standard",
     searchShortcutHint: "Klicken und Tastenkombination drücken, z. B. Strg+B oder Cmd+B. Hinweis: Fn ist nicht immer als Shortcut erkennbar.",
@@ -206,6 +243,26 @@ const i18n = {
     settingsTitle: "Einstellungen",
     uiLanguageLabel: "App-Sprache",
     themeLabel: "Theme",
+    backgroundPresetLabel: "Hintergrund-Modus",
+    backgroundPresetAurora: "Aurora",
+    backgroundPresetDeep: "Deep Space",
+    backgroundPresetSlate: "Slate Mist",
+    backgroundPresetSunset: "Sunset Glow",
+    backgroundPresetPitch: "Pitch Black",
+    uiFontPresetLabel: "UI-Schriftart",
+    uiFontPresetJetBrains: "JetBrains Mono",
+    uiFontPresetInter: "Inter",
+    uiFontPresetSF: "SF Pro",
+    uiFontPresetFira: "Fira Code",
+    terminalFontPresetLabel: "Terminal-Schrift",
+    terminalFontPresetJetBrains: "JetBrains Mono",
+    terminalFontPresetCascadia: "Cascadia Mono",
+    terminalFontPresetMenlo: "Menlo",
+    terminalFontPresetFira: "Fira Code",
+    renderingModeLabel: "Rendering",
+    renderingModeBalanced: "Ausgewogen",
+    renderingModeSmooth: "Glatt",
+    renderingModeSharp: "Scharf",
     chipDark: "Dunkel",
     chipContrast: "Hoher Kontrast",
     accentLabel: "Akzentfarbe",
@@ -258,6 +315,24 @@ const i18n = {
     historyTitle: "Search history",
     historyClear: "Clear",
     runInTerminal: "Run",
+    safetyTitle: "Safety Layer",
+    safetyEnabledLabel: "Confirm risky commands before execution",
+    safetyModeLabel: "Safety mode",
+    safetyModeConfirmDangerous: "Confirm dangerous commands only",
+    safetyModeConfirmCareful: "Also confirm careful commands",
+    safetyModeBlockDangerous: "Block dangerous commands",
+    safetyBlockedDangerous: "Safety layer blocked a dangerous command:",
+    safetyCanceled: "Command execution canceled by safety layer.",
+    safetyReasonCatalogDangerous: "Command is marked dangerous in the index.",
+    safetyReasonCatalogCareful: "Command is marked careful in the index.",
+    safetyReasonDelete: "May delete files or directories.",
+    safetyReasonPrivilege: "Requires elevated privileges (sudo/admin).",
+    safetyReasonSystem: "May shut down/reboot or deeply alter the system.",
+    safetyReasonDisk: "May overwrite or format disks/filesystems.",
+    safetyReasonProcess: "May forcefully terminate running processes.",
+    safetyConfirmDangerousTitle: "Dangerous command detected",
+    safetyConfirmCarefulTitle: "Be careful with this command",
+    safetyConfirmQuestion: "Run anyway?",
     searchShortcutLabel: "Search shortcut",
     searchShortcutReset: "Default",
     searchShortcutHint: "Click and press a key combo, e.g. Ctrl+B or Cmd+B. Note: Fn is not always detectable as a shortcut.",
@@ -280,6 +355,26 @@ const i18n = {
     settingsTitle: "Settings",
     uiLanguageLabel: "App language",
     themeLabel: "Theme",
+    backgroundPresetLabel: "Background mode",
+    backgroundPresetAurora: "Aurora",
+    backgroundPresetDeep: "Deep Space",
+    backgroundPresetSlate: "Slate Mist",
+    backgroundPresetSunset: "Sunset Glow",
+    backgroundPresetPitch: "Pitch Black",
+    uiFontPresetLabel: "UI font",
+    uiFontPresetJetBrains: "JetBrains Mono",
+    uiFontPresetInter: "Inter",
+    uiFontPresetSF: "SF Pro",
+    uiFontPresetFira: "Fira Code",
+    terminalFontPresetLabel: "Terminal font",
+    terminalFontPresetJetBrains: "JetBrains Mono",
+    terminalFontPresetCascadia: "Cascadia Mono",
+    terminalFontPresetMenlo: "Menlo",
+    terminalFontPresetFira: "Fira Code",
+    renderingModeLabel: "Rendering",
+    renderingModeBalanced: "Balanced",
+    renderingModeSmooth: "Smooth",
+    renderingModeSharp: "Sharp",
     chipDark: "Dark",
     chipContrast: "High Contrast",
     accentLabel: "Accent color",
@@ -502,6 +597,12 @@ function applyUiLanguage(lang: "de" | "en"): void {
   searchShortcutLabel.textContent = t("searchShortcutLabel");
   searchShortcutReset.textContent = t("searchShortcutReset");
   searchShortcutHint.textContent = t("searchShortcutHint");
+  (document.getElementById("safetyTitle") as HTMLElement | null)?.replaceChildren(t("safetyTitle"));
+  (document.getElementById("safetyEnabledLabel") as HTMLElement | null)?.replaceChildren(t("safetyEnabledLabel"));
+  (document.getElementById("safetyModeLabel") as HTMLElement | null)?.replaceChildren(t("safetyModeLabel"));
+  (document.getElementById("safetyModeConfirmDangerous") as HTMLElement | null)?.replaceChildren(t("safetyModeConfirmDangerous"));
+  (document.getElementById("safetyModeConfirmCareful") as HTMLElement | null)?.replaceChildren(t("safetyModeConfirmCareful"));
+  (document.getElementById("safetyModeBlockDangerous") as HTMLElement | null)?.replaceChildren(t("safetyModeBlockDangerous"));
   if (!searchShortcutConflict.hidden && searchShortcutConflict.textContent) {
     const conflict = getReservedShortcutConflict(currentSearchShortcut);
     setShortcutConflict(conflict);
@@ -523,6 +624,26 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("settingsTitle") as HTMLElement | null)?.replaceChildren(t("settingsTitle"));
   (document.getElementById("uiLanguageLabel") as HTMLElement | null)?.replaceChildren(t("uiLanguageLabel"));
   (document.getElementById("themeLabel") as HTMLElement | null)?.replaceChildren(t("themeLabel"));
+  (document.getElementById("backgroundPresetLabel") as HTMLElement | null)?.replaceChildren(t("backgroundPresetLabel"));
+  (document.getElementById("backgroundPresetAurora") as HTMLElement | null)?.replaceChildren(t("backgroundPresetAurora"));
+  (document.getElementById("backgroundPresetDeep") as HTMLElement | null)?.replaceChildren(t("backgroundPresetDeep"));
+  (document.getElementById("backgroundPresetSlate") as HTMLElement | null)?.replaceChildren(t("backgroundPresetSlate"));
+  (document.getElementById("backgroundPresetSunset") as HTMLElement | null)?.replaceChildren(t("backgroundPresetSunset"));
+  (document.getElementById("backgroundPresetPitch") as HTMLElement | null)?.replaceChildren(t("backgroundPresetPitch"));
+  (document.getElementById("uiFontPresetLabel") as HTMLElement | null)?.replaceChildren(t("uiFontPresetLabel"));
+  (document.getElementById("uiFontPresetJetBrains") as HTMLElement | null)?.replaceChildren(t("uiFontPresetJetBrains"));
+  (document.getElementById("uiFontPresetInter") as HTMLElement | null)?.replaceChildren(t("uiFontPresetInter"));
+  (document.getElementById("uiFontPresetSF") as HTMLElement | null)?.replaceChildren(t("uiFontPresetSF"));
+  (document.getElementById("uiFontPresetFira") as HTMLElement | null)?.replaceChildren(t("uiFontPresetFira"));
+  (document.getElementById("terminalFontPresetLabel") as HTMLElement | null)?.replaceChildren(t("terminalFontPresetLabel"));
+  (document.getElementById("terminalFontPresetJetBrains") as HTMLElement | null)?.replaceChildren(t("terminalFontPresetJetBrains"));
+  (document.getElementById("terminalFontPresetCascadia") as HTMLElement | null)?.replaceChildren(t("terminalFontPresetCascadia"));
+  (document.getElementById("terminalFontPresetMenlo") as HTMLElement | null)?.replaceChildren(t("terminalFontPresetMenlo"));
+  (document.getElementById("terminalFontPresetFira") as HTMLElement | null)?.replaceChildren(t("terminalFontPresetFira"));
+  (document.getElementById("renderingModeLabel") as HTMLElement | null)?.replaceChildren(t("renderingModeLabel"));
+  (document.getElementById("renderingModeBalanced") as HTMLElement | null)?.replaceChildren(t("renderingModeBalanced"));
+  (document.getElementById("renderingModeSmooth") as HTMLElement | null)?.replaceChildren(t("renderingModeSmooth"));
+  (document.getElementById("renderingModeSharp") as HTMLElement | null)?.replaceChildren(t("renderingModeSharp"));
   (document.getElementById("chipDark") as HTMLElement | null)?.replaceChildren(t("chipDark"));
   (document.getElementById("chipContrast") as HTMLElement | null)?.replaceChildren(t("chipContrast"));
   (document.getElementById("accentLabel") as HTMLElement | null)?.replaceChildren(t("accentLabel"));
@@ -568,6 +689,92 @@ let terminalLayoutRaf = 0;
 let cachedTerminalHeadHeight = 0;
 let cachedTerminalFormHeight = 0;
 let cachedTerminalInlineHintHeight = 0;
+let terminalCurrentDirHint = "~";
+let wrapScrollRaf = 0;
+
+type TerminalTabSnapshot = {
+  id: number;
+  title: string;
+  started: boolean;
+  history: string[];
+  historyIndex: number;
+  rows: string[];
+  cursorCol: number;
+  suggestions: string[];
+  suggestionIndex: number;
+  segment: number;
+  currentDirHint: string;
+};
+
+const terminalTabSnapshots = new Map<number, TerminalTabSnapshot>();
+let activeTerminalTabId = 1;
+let nextTerminalTabId = 2;
+
+function createTerminalTabSnapshot(id: number): TerminalTabSnapshot {
+  return {
+    id,
+    title: `Tab ${id}`,
+    started: false,
+    history: [],
+    historyIndex: -1,
+    rows: [""],
+    cursorCol: 0,
+    suggestions: [],
+    suggestionIndex: -1,
+    segment: 1,
+    currentDirHint: "~"
+  };
+}
+
+function getTerminalTabSnapshot(tabId = activeTerminalTabId): TerminalTabSnapshot {
+  let found = terminalTabSnapshots.get(tabId);
+  if (!found) {
+    found = createTerminalTabSnapshot(tabId);
+    terminalTabSnapshots.set(tabId, found);
+  }
+  return found;
+}
+
+function saveActiveTerminalTabSnapshot(): void {
+  const current = getTerminalTabSnapshot(activeTerminalTabId);
+  current.started = terminalStarted;
+  current.history = [...terminalHistory];
+  current.historyIndex = terminalHistoryIndex;
+  current.rows = [...terminalRows];
+  current.cursorCol = terminalCursorCol;
+  current.suggestions = [...terminalSuggestions];
+  current.suggestionIndex = terminalSuggestionIndex;
+  current.segment = terminalSegment;
+  current.currentDirHint = terminalCurrentDirHint;
+}
+
+function loadTerminalTabSnapshot(tabId: number): void {
+  const next = getTerminalTabSnapshot(tabId);
+  activeTerminalTabId = tabId;
+  terminalStarted = next.started;
+  terminalHistory.splice(0, terminalHistory.length, ...next.history);
+  terminalHistoryIndex = next.historyIndex;
+  terminalRows = [...next.rows];
+  terminalCursorCol = next.cursorCol;
+  terminalSuggestions = [...next.suggestions];
+  terminalSuggestionIndex = next.suggestionIndex;
+  terminalSegment = next.segment;
+  terminalCurrentDirHint = next.currentDirHint || "~";
+}
+
+function renderTerminalTabs(): void {
+  const ordered = [...terminalTabSnapshots.values()].sort((a, b) => a.id - b.id);
+  terminalTabs.innerHTML = ordered
+    .map((tab) => {
+      const active = tab.id === activeTerminalTabId ? " is-active" : "";
+      const canClose = ordered.length > 1;
+      return `<button type="button" class="terminal-tab${active}" data-tab-id="${tab.id}">
+        <span class="terminal-tab-label">${escapeHtml(tab.title)}</span>
+        ${canClose ? `<span class="terminal-tab-close" data-tab-close="${tab.id}">×</span>` : ""}
+      </button>`;
+    })
+    .join("");
+}
 
 type TerminalBufferPolicy = {
   hardLimit: number;
@@ -646,8 +853,6 @@ function updateTerminalCurrentDirHintFromOutput(plainOutput: string): void {
     }
   }
 }
-let terminalCurrentDirHint = "~";
-let wrapScrollRaf = 0;
 
 function syncWrapScrollState(): void {
   const needsScroll = wrapEl.scrollHeight - wrapEl.clientHeight > 2;
@@ -880,6 +1085,69 @@ function applyTerminalThemePreset(preset: UiSettings["terminalThemePreset"]): vo
   }
 }
 
+function applyBackgroundPreset(preset: UiSettings["backgroundPreset"]): void {
+  const root = document.documentElement;
+  const varsByPreset: Record<UiSettings["backgroundPreset"], Record<string, string>> = {
+    aurora: {
+      "--bg": "#0b1020",
+      "--bg-orb-a": "#25335f",
+      "--bg-orb-b": "#2b2148",
+      "--bg-bottom": "#080d19"
+    },
+    deep: {
+      "--bg": "#050a15",
+      "--bg-orb-a": "#0d2a57",
+      "--bg-orb-b": "#18193d",
+      "--bg-bottom": "#04070f"
+    },
+    slate: {
+      "--bg": "#101721",
+      "--bg-orb-a": "#2a3852",
+      "--bg-orb-b": "#243047",
+      "--bg-bottom": "#0c121b"
+    },
+    sunset: {
+      "--bg": "#160f14",
+      "--bg-orb-a": "#5d2f45",
+      "--bg-orb-b": "#42233a",
+      "--bg-bottom": "#120b10"
+    },
+    pitch: {
+      "--bg": "#07090f",
+      "--bg-orb-a": "#121827",
+      "--bg-orb-b": "#11131c",
+      "--bg-bottom": "#05060b"
+    }
+  };
+  const vars = varsByPreset[preset] ?? varsByPreset.aurora;
+  for (const [key, value] of Object.entries(vars)) {
+    root.style.setProperty(key, value);
+  }
+}
+
+function applyFontAndRendering(
+  uiFont: UiSettings["uiFontPreset"],
+  terminalFont: UiSettings["terminalFontPreset"],
+  renderingMode: UiSettings["renderingMode"]
+): void {
+  const root = document.documentElement;
+  const uiFonts: Record<UiSettings["uiFontPreset"], string> = {
+    jetbrains: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+    inter: '"Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
+    sf: '"SF Pro Text", "SF Pro Display", -apple-system, "Segoe UI", sans-serif',
+    fira: '"Fira Code", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
+  };
+  const terminalFonts: Record<UiSettings["terminalFontPreset"], string> = {
+    jetbrains: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+    cascadia: '"Cascadia Mono", "Cascadia Code", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace',
+    menlo: 'Menlo, "SFMono-Regular", Monaco, Consolas, ui-monospace, monospace',
+    fira: '"Fira Code", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
+  };
+  root.style.setProperty("--font-ui-stack", uiFonts[uiFont] ?? uiFonts.jetbrains);
+  root.style.setProperty("--font-terminal-stack", terminalFonts[terminalFont] ?? terminalFonts.jetbrains);
+  document.body.dataset.rendering = renderingMode;
+}
+
 function readUiSettings(): UiSettings {
   try {
     const raw = localStorage.getItem(uiSettingsKey);
@@ -887,7 +1155,13 @@ function readUiSettings(): UiSettings {
       return {
         uiLanguage: "de",
         searchShortcut: getDefaultSearchShortcut(),
+        safetyLayerEnabled: true,
+        safetyLayerMode: "confirm-dangerous",
         theme: "midnight",
+        backgroundPreset: "aurora",
+        uiFontPreset: "jetbrains",
+        terminalFontPreset: "jetbrains",
+        renderingMode: "balanced",
         terminalThemePreset: "classic",
         accent: "#6ca5ff",
         scale: 100,
@@ -902,9 +1176,25 @@ function readUiSettings(): UiSettings {
     return {
       uiLanguage: parsed.uiLanguage === "en" ? "en" : "de",
       searchShortcut: normalizeShortcut(typeof parsed.searchShortcut === "string" ? parsed.searchShortcut : getDefaultSearchShortcut()),
+      safetyLayerEnabled: typeof parsed.safetyLayerEnabled === "boolean" ? parsed.safetyLayerEnabled : true,
+      safetyLayerMode: supportedSafetyModes.includes(parsed.safetyLayerMode as UiSettings["safetyLayerMode"])
+        ? (parsed.safetyLayerMode as UiSettings["safetyLayerMode"])
+        : "confirm-dangerous",
       theme: supportedThemes.includes(parsed.theme as UiSettings["theme"])
         ? (parsed.theme as UiSettings["theme"])
         : "midnight",
+      backgroundPreset: supportedBackgroundPresets.includes(parsed.backgroundPreset as UiSettings["backgroundPreset"])
+        ? (parsed.backgroundPreset as UiSettings["backgroundPreset"])
+        : "aurora",
+      uiFontPreset: supportedUiFontPresets.includes(parsed.uiFontPreset as UiSettings["uiFontPreset"])
+        ? (parsed.uiFontPreset as UiSettings["uiFontPreset"])
+        : "jetbrains",
+      terminalFontPreset: supportedTerminalFontPresets.includes(parsed.terminalFontPreset as UiSettings["terminalFontPreset"])
+        ? (parsed.terminalFontPreset as UiSettings["terminalFontPreset"])
+        : "jetbrains",
+      renderingMode: supportedRenderingModes.includes(parsed.renderingMode as UiSettings["renderingMode"])
+        ? (parsed.renderingMode as UiSettings["renderingMode"])
+        : "balanced",
       terminalThemePreset: supportedTerminalThemes.includes(parsed.terminalThemePreset as UiSettings["terminalThemePreset"])
         ? (parsed.terminalThemePreset as UiSettings["terminalThemePreset"])
         : "classic",
@@ -920,7 +1210,13 @@ function readUiSettings(): UiSettings {
     return {
       uiLanguage: "de",
       searchShortcut: getDefaultSearchShortcut(),
+      safetyLayerEnabled: true,
+      safetyLayerMode: "confirm-dangerous",
       theme: "midnight",
+      backgroundPreset: "aurora",
+      uiFontPreset: "jetbrains",
+      terminalFontPreset: "jetbrains",
+      renderingMode: "balanced",
       terminalThemePreset: "classic",
       accent: "#6ca5ff",
       scale: 100,
@@ -944,6 +1240,8 @@ function applyUiSettings(settings: UiSettings): void {
   if (settings.theme === "midnight") {
     delete document.body.dataset.theme;
   }
+  applyBackgroundPreset(settings.backgroundPreset);
+  applyFontAndRendering(settings.uiFontPreset, settings.terminalFontPreset, settings.renderingMode);
   applyTerminalThemePreset(settings.terminalThemePreset);
 
   const root = document.documentElement;
@@ -961,7 +1259,14 @@ function applyUiSettings(settings: UiSettings): void {
   uiLanguageSelect.value = settings.uiLanguage;
   setShortcutInput(currentSearchShortcut);
   setShortcutConflict(getReservedShortcutConflict(currentSearchShortcut));
+  safetyEnabledCheckbox.checked = settings.safetyLayerEnabled;
+  safetyModeSelect.value = settings.safetyLayerMode;
+  safetyModeSelect.disabled = !settings.safetyLayerEnabled;
   themeSelect.value = settings.theme;
+  backgroundPresetSelect.value = settings.backgroundPreset;
+  uiFontPresetSelect.value = settings.uiFontPreset;
+  terminalFontPresetSelect.value = settings.terminalFontPreset;
+  renderingModeSelect.value = settings.renderingMode;
   terminalThemePresetSelect.value = settings.terminalThemePreset;
   accentColor.value = settings.accent;
   uiScale.value = String(clampedScale);
@@ -974,7 +1279,7 @@ function applyUiSettings(settings: UiSettings): void {
 
   if (terminalStarted) {
     const size = getTerminalSizeEstimate();
-    void window.cmdfindDesktop.terminalResize(size.cols, size.rows);
+    void window.cmdfindDesktop.terminalResize(size.cols, size.rows, activeTerminalTabId);
   }
   queueWrapScrollState();
   queueTerminalLayoutMetricsSync();
@@ -1099,7 +1404,9 @@ function renderEntries(
         <div class="command-row">
           <div class="command">${escapeHtml(entry.command)}</div>
           <button class="copy-btn" data-cmd="${escapeHtml(entry.command)}">Copy</button>
-          <button class="run-btn" data-run-cmd="${escapeHtml(entry.command)}">${escapeHtml(t("runInTerminal"))}</button>
+          <button class="run-btn" data-run-cmd="${escapeHtml(entry.command)}" data-run-danger="${escapeHtml(
+            entry.dangerLevel
+          )}">${escapeHtml(t("runInTerminal"))}</button>
           <button class="favorite-btn" data-fav-key="${escapeHtml(favoriteKeyFor(entry))}" aria-label="Favorite">${activeFavorite ? "★" : "☆"}</button>
         </div>
         <div class="note">${escapeHtml(note)}</div>
@@ -1123,21 +1430,117 @@ function render(response: DesktopSearchResponse): void {
   );
 }
 
-async function runCommandInTerminal(command: string): Promise<void> {
+async function runCommandInTerminal(command: string, indexedDangerLevel?: string): Promise<void> {
   if (!command.trim()) return;
+  if (!confirmSafetyForCommand(command, indexedDangerLevel)) {
+    statusEl.textContent = t("safetyCanceled");
+    return;
+  }
   setTerminalOpen(true);
   if (!terminalStarted) {
-    const started = await window.cmdfindDesktop.terminalStart();
+    const started = await window.cmdfindDesktop.terminalStart(activeTerminalTabId);
     terminalStarted = started;
+    saveActiveTerminalTabSnapshot();
     if (!started) {
       statusEl.textContent = t("terminalStartFailed");
       return;
     }
     const size = getTerminalSizeEstimate();
-    await window.cmdfindDesktop.terminalResize(size.cols, size.rows);
+    await window.cmdfindDesktop.terminalResize(size.cols, size.rows, activeTerminalTabId);
   }
-  await window.cmdfindDesktop.terminalInput(`${command}\n`);
+  await window.cmdfindDesktop.terminalInput(`${command}\n`, activeTerminalTabId);
   statusEl.textContent = `${t("ranInTerminal")}: ${command}`;
+}
+
+type SafetyAssessment = {
+  level: "safe" | "careful" | "dangerous";
+  reason: string;
+};
+
+function safetyLevelWeight(level: SafetyAssessment["level"]): number {
+  if (level === "dangerous") return 3;
+  if (level === "careful") return 2;
+  return 1;
+}
+
+function assessCommandSafety(command: string, indexedDangerLevel?: string): SafetyAssessment {
+  const source = (indexedDangerLevel || "").toLowerCase();
+  const raw = command.trim().toLowerCase();
+  const reasons: string[] = [];
+  let level: SafetyAssessment["level"] = "safe";
+
+  const setLevel = (next: SafetyAssessment["level"], reasonKey: keyof typeof i18n.de): void => {
+    if (safetyLevelWeight(next) > safetyLevelWeight(level)) {
+      level = next;
+    }
+    reasons.push(t(reasonKey));
+  };
+
+  if (source === "dangerous") setLevel("dangerous", "safetyReasonCatalogDangerous");
+  else if (source === "careful") setLevel("careful", "safetyReasonCatalogCareful");
+
+  const dangerousChecks: Array<[RegExp, keyof typeof i18n.de]> = [
+    [/\brm\s+-rf\s+\/(\s|$)/i, "safetyReasonDelete"],
+    [/\b(del|erase)\s+\/[sqf]/i, "safetyReasonDelete"],
+    [/\bmkfs(\.| )|\b(format|diskpart|fdisk)\b/i, "safetyReasonDisk"],
+    [/\bdd\s+.*\bof=\/dev\//i, "safetyReasonDisk"],
+    [/\b(diskutil\s+erase|diskutil\s+partition|shred)\b/i, "safetyReasonDisk"],
+    [/\b(shutdown|reboot|poweroff|halt|init\s+0|init\s+6)\b/i, "safetyReasonSystem"]
+  ];
+
+  const carefulChecks: Array<[RegExp, keyof typeof i18n.de]> = [
+    [/\bsudo\b|runas\b/i, "safetyReasonPrivilege"],
+    [/\brm\b|\bdel\b|\bmv\b/i, "safetyReasonDelete"],
+    [/\bkillall\b|\bpkill\b|\bkill\s+-9\b/i, "safetyReasonProcess"],
+    [/\bchmod\b|\bchown\b/i, "safetyReasonSystem"]
+  ];
+
+  for (const [pattern, reason] of dangerousChecks) {
+    if (pattern.test(raw)) {
+      setLevel("dangerous", reason);
+    }
+  }
+  for (const [pattern, reason] of carefulChecks) {
+    if (pattern.test(raw)) {
+      setLevel("careful", reason);
+    }
+  }
+
+  if (!reasons.length) {
+    return { level: "safe", reason: "" };
+  }
+  const reason = Array.from(new Set(reasons)).slice(0, 2).join(" ");
+  return { level, reason };
+}
+
+function confirmSafetyForCommand(command: string, indexedDangerLevel?: string): boolean {
+  const settings = readUiSettings();
+  if (!settings.safetyLayerEnabled) {
+    return true;
+  }
+
+  const assessment = assessCommandSafety(command, indexedDangerLevel);
+  if (assessment.level === "safe") {
+    return true;
+  }
+
+  if (settings.safetyLayerMode === "block-dangerous" && assessment.level === "dangerous") {
+    statusEl.textContent = `${t("safetyBlockedDangerous")} ${command}`;
+    return false;
+  }
+
+  const needsConfirm =
+    settings.safetyLayerMode === "confirm-careful" ||
+    (settings.safetyLayerMode === "confirm-dangerous" && assessment.level === "dangerous");
+
+  if (!needsConfirm) {
+    return true;
+  }
+
+  const title = assessment.level === "dangerous" ? t("safetyConfirmDangerousTitle") : t("safetyConfirmCarefulTitle");
+  const reasonLine = assessment.reason ? `\n${assessment.reason}` : "";
+  const message = `${title}\n\n${command}${reasonLine}\n\n${t("safetyConfirmQuestion")}`;
+  return window.confirm(message);
 }
 
 async function copyCommand(command: string): Promise<void> {
@@ -1372,7 +1775,23 @@ function syncUiSettings(): void {
   const settings: UiSettings = {
     uiLanguage: uiLanguageSelect.value === "en" ? "en" : "de",
     searchShortcut: normalizeShortcut(searchShortcutInput.dataset.shortcut || currentSearchShortcut || getDefaultSearchShortcut()),
+    safetyLayerEnabled: safetyEnabledCheckbox.checked,
+    safetyLayerMode: supportedSafetyModes.includes(safetyModeSelect.value as UiSettings["safetyLayerMode"])
+      ? (safetyModeSelect.value as UiSettings["safetyLayerMode"])
+      : "confirm-dangerous",
     theme: themeSelect.value as UiSettings["theme"],
+    backgroundPreset: supportedBackgroundPresets.includes(backgroundPresetSelect.value as UiSettings["backgroundPreset"])
+      ? (backgroundPresetSelect.value as UiSettings["backgroundPreset"])
+      : "aurora",
+    uiFontPreset: supportedUiFontPresets.includes(uiFontPresetSelect.value as UiSettings["uiFontPreset"])
+      ? (uiFontPresetSelect.value as UiSettings["uiFontPreset"])
+      : "jetbrains",
+    terminalFontPreset: supportedTerminalFontPresets.includes(terminalFontPresetSelect.value as UiSettings["terminalFontPreset"])
+      ? (terminalFontPresetSelect.value as UiSettings["terminalFontPreset"])
+      : "jetbrains",
+    renderingMode: supportedRenderingModes.includes(renderingModeSelect.value as UiSettings["renderingMode"])
+      ? (renderingModeSelect.value as UiSettings["renderingMode"])
+      : "balanced",
     terminalThemePreset: supportedTerminalThemes.includes(terminalThemePresetSelect.value as UiSettings["terminalThemePreset"])
       ? (terminalThemePresetSelect.value as UiSettings["terminalThemePreset"])
       : "classic",
@@ -1423,12 +1842,18 @@ function syncUiSettings(): void {
 
 uiLanguageSelect.addEventListener("change", syncUiSettings);
 themeSelect.addEventListener("change", syncUiSettings);
+backgroundPresetSelect.addEventListener("change", syncUiSettings);
+uiFontPresetSelect.addEventListener("change", syncUiSettings);
+terminalFontPresetSelect.addEventListener("change", syncUiSettings);
+renderingModeSelect.addEventListener("change", syncUiSettings);
 terminalThemePresetSelect.addEventListener("change", syncUiSettings);
 accentColor.addEventListener("input", syncUiSettings);
 uiScale.addEventListener("input", syncUiSettings);
 radiusScale.addEventListener("input", syncUiSettings);
 terminalHeightRange.addEventListener("input", syncUiSettings);
 terminalFontSizeRange.addEventListener("input", syncUiSettings);
+safetyEnabledCheckbox.addEventListener("change", syncUiSettings);
+safetyModeSelect.addEventListener("change", syncUiSettings);
 menuBarEnabledCheckbox.addEventListener("change", syncUiSettings);
 backgroundModeEnabledCheckbox.addEventListener("change", syncUiSettings);
 
@@ -1456,7 +1881,8 @@ searchShortcutReset.addEventListener("click", () => {
   syncUiSettings();
 });
 
-function appendTerminalOutput(chunk: string): void {
+function appendTerminalOutput(chunk: string, tabId = activeTerminalTabId): void {
+  const target = getTerminalTabSnapshot(tabId);
   const normalized = chunk
     .replace(/\u001b\][^\u0007]*(\u0007|\u001b\\)/g, "")
     .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
@@ -1465,23 +1891,23 @@ function appendTerminalOutput(chunk: string): void {
 
   for (const ch of normalized) {
     if (ch === "\r") {
-      terminalCursorCol = 0;
+      target.cursorCol = 0;
       continue;
     }
 
     if (ch === "\n") {
-      terminalRows.push("");
-      terminalCursorCol = 0;
+      target.rows.push("");
+      target.cursorCol = 0;
       continue;
     }
 
     if (ch === "\b") {
-      if (terminalCursorCol > 0) {
-        const rowIdx = terminalRows.length - 1;
-        const row = terminalRows[rowIdx] || "";
-        const nextCursor = terminalCursorCol - 1;
-        terminalRows[rowIdx] = `${row.slice(0, nextCursor)}${row.slice(terminalCursorCol)}`;
-        terminalCursorCol = nextCursor;
+      if (target.cursorCol > 0) {
+        const rowIdx = target.rows.length - 1;
+        const row = target.rows[rowIdx] || "";
+        const nextCursor = target.cursorCol - 1;
+        target.rows[rowIdx] = `${row.slice(0, nextCursor)}${row.slice(target.cursorCol)}`;
+        target.cursorCol = nextCursor;
       }
       continue;
     }
@@ -1495,28 +1921,32 @@ function appendTerminalOutput(chunk: string): void {
       continue;
     }
 
-    const rowIdx = terminalRows.length - 1;
-    const row = terminalRows[rowIdx] || "";
-    if (terminalCursorCol >= row.length) {
-      const pad = terminalCursorCol > row.length ? " ".repeat(terminalCursorCol - row.length) : "";
-      terminalRows[rowIdx] = `${row}${pad}${ch}`;
+    const rowIdx = target.rows.length - 1;
+    const row = target.rows[rowIdx] || "";
+    if (target.cursorCol >= row.length) {
+      const pad = target.cursorCol > row.length ? " ".repeat(target.cursorCol - row.length) : "";
+      target.rows[rowIdx] = `${row}${pad}${ch}`;
     } else {
-      terminalRows[rowIdx] = `${row.slice(0, terminalCursorCol)}${ch}${row.slice(terminalCursorCol + 1)}`;
+      target.rows[rowIdx] = `${row.slice(0, target.cursorCol)}${ch}${row.slice(target.cursorCol + 1)}`;
     }
-    terminalCursorCol += 1;
+    target.cursorCol += 1;
   }
 
-  if (terminalRows.length > terminalBufferPolicy.hardLimit) {
-    const nextSegment = terminalSegment + 1;
+  if (target.rows.length > terminalBufferPolicy.hardLimit) {
+    const nextSegment = target.segment + 1;
     const rolloverLine =
       currentUiLanguage === "de"
         ? `[CMDFIND] Terminal ${nextSegment} gestartet (auto, Profil: ${terminalBufferPolicy.profile}). Verlauf gekürzt, Session läuft weiter.`
         : `[CMDFIND] Terminal ${nextSegment} started (auto, profile: ${terminalBufferPolicy.profile}). Log trimmed, session continues.`;
-    terminalRows = [rolloverLine, ...terminalRows.slice(-terminalBufferPolicy.keepRows)];
-    terminalSegment = nextSegment;
+    target.rows = [rolloverLine, ...target.rows.slice(-terminalBufferPolicy.keepRows)];
+    target.segment = nextSegment;
   }
 
-  const plainOutput = terminalRows.join("\n");
+  if (tabId !== activeTerminalTabId) {
+    return;
+  }
+
+  const plainOutput = target.rows.join("\n");
   const withMarkup = escapeHtml(plainOutput)
     .replace(/(\[CMDFIND\][^\n]*)/g, '<span class="term-line-badge">$1</span>')
     .replace(/(^|\n)([^\n]*[%$#]\s)([^\n]*)/g, '$1<span class="term-prompt">$2</span><span class="term-command">$3</span>')
@@ -1532,6 +1962,7 @@ function appendTerminalOutput(chunk: string): void {
   terminalOutput.innerHTML = `${withMarkup}<span data-term-end="1"></span>`;
   scrollTerminalToBottom();
   updateTerminalCurrentDirHintFromOutput(plainOutput);
+  saveActiveTerminalTabSnapshot();
 }
 
 function clearTerminalDisplay(): void {
@@ -1539,6 +1970,25 @@ function clearTerminalDisplay(): void {
   terminalCursorCol = 0;
   terminalSegment = 1;
   terminalOutput.textContent = "";
+  saveActiveTerminalTabSnapshot();
+}
+
+function renderActiveTerminalFromSnapshot(): void {
+  const plainOutput = terminalRows.join("\n");
+  const withMarkup = escapeHtml(plainOutput)
+    .replace(/(\[CMDFIND\][^\n]*)/g, '<span class="term-line-badge">$1</span>')
+    .replace(/(^|\n)([^\n]*[%$#]\s)([^\n]*)/g, '$1<span class="term-prompt">$2</span><span class="term-command">$3</span>')
+    .replace(/\b(error|failed|not found|permission denied|denied)\b/gi, '<span class="term-error">$1</span>')
+    .replace(/\b(warn|warning)\b/gi, '<span class="term-warn">$1</span>')
+    .replace(/\b(success|done|completed|ready)\b/gi, '<span class="term-ok">$1</span>')
+    .replace(
+      /(^|\n)\s*C M D F I N D\s*(?=\n|$)/g,
+      '$1<span class="term-cmdfind-badge"><span class="term-cmdfind-c">C</span> <span class="term-cmdfind-m">M</span> <span class="term-cmdfind-d">D</span> <span class="term-cmdfind-f">F</span> <span class="term-cmdfind-i">I</span> <span class="term-cmdfind-n">N</span> <span class="term-cmdfind-d2">D</span></span>'
+    )
+    .replace(/(^|\n)\s*command finder\s*(?=\n|$)/gi, '$1<span class="term-cmdfind-sub">command finder</span>');
+  terminalOutput.innerHTML = `${withMarkup}<span data-term-end="1"></span>`;
+  scrollTerminalToBottom();
+  renderTerminalSuggestions();
 }
 
 function getTerminalSizeEstimate(): { cols: number; rows: number } {
@@ -1557,6 +2007,7 @@ function closeTerminalSuggestions(): void {
   renderInlineHint();
   terminalSuggest.hidden = true;
   terminalSuggest.innerHTML = "";
+  saveActiveTerminalTabSnapshot();
 }
 
 function applyTerminalSuggestion(command: string): void {
@@ -1687,6 +2138,47 @@ async function updateTerminalSuggestions(prefixRaw: string): Promise<void> {
   renderTerminalSuggestions();
 }
 
+function switchTerminalTab(tabId: number): void {
+  if (tabId === activeTerminalTabId) return;
+  saveActiveTerminalTabSnapshot();
+  loadTerminalTabSnapshot(tabId);
+  closeTerminalSuggestions();
+  terminalInput.value = "";
+  renderActiveTerminalFromSnapshot();
+  renderTerminalTabs();
+  if (terminalStarted) {
+    const size = getTerminalSizeEstimate();
+    void window.cmdfindDesktop.terminalResize(size.cols, size.rows, activeTerminalTabId);
+  }
+}
+
+function addTerminalTab(): void {
+  saveActiveTerminalTabSnapshot();
+  const newTabId = nextTerminalTabId++;
+  terminalTabSnapshots.set(newTabId, createTerminalTabSnapshot(newTabId));
+  loadTerminalTabSnapshot(newTabId);
+  closeTerminalSuggestions();
+  renderActiveTerminalFromSnapshot();
+  renderTerminalTabs();
+  setTerminalOpen(true);
+}
+
+async function closeTerminalTab(tabId: number): Promise<void> {
+  const snapshot = terminalTabSnapshots.get(tabId);
+  if (!snapshot || terminalTabSnapshots.size <= 1) return;
+  if (snapshot.started) {
+    await window.cmdfindDesktop.terminalStop(tabId);
+  }
+  terminalTabSnapshots.delete(tabId);
+
+  if (activeTerminalTabId === tabId) {
+    const fallback = [...terminalTabSnapshots.keys()].sort((a, b) => a - b)[0] ?? 1;
+    loadTerminalTabSnapshot(fallback);
+    renderActiveTerminalFromSnapshot();
+  }
+  renderTerminalTabs();
+}
+
 function setTerminalOpen(open: boolean): void {
   terminalPanel.hidden = !open;
   if (open) {
@@ -1705,6 +2197,28 @@ function setTerminalOpen(open: boolean): void {
 terminalRun.tabIndex = -1;
 terminalClear.tabIndex = -1;
 terminalStop.tabIndex = -1;
+
+terminalAddTab.addEventListener("click", () => {
+  addTerminalTab();
+});
+
+terminalTabs.addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+  const close = target.closest<HTMLElement>("[data-tab-close]");
+  if (close) {
+    const tabId = Number(close.getAttribute("data-tab-close"));
+    if (Number.isFinite(tabId)) {
+      void closeTerminalTab(tabId);
+    }
+    return;
+  }
+  const tabButton = target.closest<HTMLElement>("[data-tab-id]");
+  if (!tabButton) return;
+  const tabId = Number(tabButton.getAttribute("data-tab-id"));
+  if (Number.isFinite(tabId)) {
+    switchTerminalTab(tabId);
+  }
+});
 
 terminalInput.addEventListener("focus", () => {
   terminalInputHadFocus = true;
@@ -1732,14 +2246,15 @@ terminalToggle.addEventListener("click", async () => {
     return;
   }
 
-  const started = await window.cmdfindDesktop.terminalStart();
+  const started = await window.cmdfindDesktop.terminalStart(activeTerminalTabId);
   terminalStarted = started;
+  saveActiveTerminalTabSnapshot();
   if (!started) {
     appendTerminalOutput("[terminal could not start]\n");
     return;
   }
   const size = getTerminalSizeEstimate();
-  await window.cmdfindDesktop.terminalResize(size.cols, size.rows);
+  await window.cmdfindDesktop.terminalResize(size.cols, size.rows, activeTerminalTabId);
 });
 
 terminalForm.addEventListener("submit", async (event) => {
@@ -1747,26 +2262,35 @@ terminalForm.addEventListener("submit", async (event) => {
   const command = terminalInput.value.trim();
   if (!command) return;
 
+  if (command.toLowerCase() === "clear") {
+    clearTerminalDisplay();
+    closeTerminalSuggestions();
+    terminalInput.value = "";
+    if (terminalStarted) {
+      await window.cmdfindDesktop.terminalInput("\n", activeTerminalTabId);
+    }
+    return;
+  }
+
+  if (!confirmSafetyForCommand(command)) {
+    statusEl.textContent = t("safetyCanceled");
+    return;
+  }
+
   if (!terminalStarted) {
-    const started = await window.cmdfindDesktop.terminalStart();
+    const started = await window.cmdfindDesktop.terminalStart(activeTerminalTabId);
     terminalStarted = started;
+    saveActiveTerminalTabSnapshot();
     if (!started) {
       appendTerminalOutput("[terminal could not start]\n");
       return;
     }
   }
 
-  if (command.toLowerCase() === "clear") {
-    clearTerminalDisplay();
-    closeTerminalSuggestions();
-    terminalInput.value = "";
-    await window.cmdfindDesktop.terminalInput("\n");
-    return;
-  }
-
-  await window.cmdfindDesktop.terminalInput(`${command}\n`);
+  await window.cmdfindDesktop.terminalInput(`${command}\n`, activeTerminalTabId);
   terminalHistory.push(command);
   terminalHistoryIndex = terminalHistory.length;
+  saveActiveTerminalTabSnapshot();
   terminalInput.value = "";
   closeTerminalSuggestions();
   terminalInput.focus();
@@ -1849,7 +2373,7 @@ terminalInput.addEventListener("keydown", async (event) => {
   if (event.key.toLowerCase() === "c" && event.ctrlKey) {
     event.preventDefault();
     if (!terminalStarted) return;
-    await window.cmdfindDesktop.terminalInput("\u0003");
+    await window.cmdfindDesktop.terminalInput("\u0003", activeTerminalTabId);
   }
 });
 
@@ -1895,8 +2419,9 @@ terminalClear.addEventListener("click", () => {
 });
 
 terminalStop.addEventListener("click", async () => {
-  await window.cmdfindDesktop.terminalStop();
+  await window.cmdfindDesktop.terminalStop(activeTerminalTabId);
   terminalStarted = false;
+  saveActiveTerminalTabSnapshot();
   appendTerminalOutput("[terminal stopped]\n");
 });
 
@@ -1904,15 +2429,16 @@ window.addEventListener("resize", () => {
   queueTerminalLayoutMetricsSync();
   if (!terminalStarted) return;
   const size = getTerminalSizeEstimate();
-  void window.cmdfindDesktop.terminalResize(size.cols, size.rows);
+  void window.cmdfindDesktop.terminalResize(size.cols, size.rows, activeTerminalTabId);
 });
 
 resultsEl.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   if (target.classList.contains("run-btn")) {
     const cmd = target.getAttribute("data-run-cmd");
+    const danger = target.getAttribute("data-run-danger");
     if (!cmd) return;
-    void runCommandInTerminal(cmd);
+    void runCommandInTerminal(cmd, danger || undefined);
     return;
   }
 
@@ -1973,14 +2499,27 @@ setReadmeExpanded(false);
 renderSearchHistory();
 queueWrapScrollState();
 queueTerminalLayoutMetricsSync();
+terminalTabSnapshots.set(1, createTerminalTabSnapshot(1));
+loadTerminalTabSnapshot(1);
+renderTerminalTabs();
 window.addEventListener("resize", queueWrapScrollState);
 new MutationObserver(() => queueWrapScrollState()).observe(wrapEl, {
   childList: true,
   subtree: true,
   attributes: true
 });
-window.cmdfindDesktop.onTerminalOutput((chunk) => {
-  appendTerminalOutput(chunk);
+window.cmdfindDesktop.onTerminalOutput((sessionId, chunk) => {
+  const targetId = Number.isFinite(sessionId) ? sessionId : 1;
+  if (!terminalTabSnapshots.has(targetId)) {
+    terminalTabSnapshots.set(targetId, createTerminalTabSnapshot(targetId));
+    const snap = getTerminalTabSnapshot(targetId);
+    snap.started = true;
+    renderTerminalTabs();
+  }
+  appendTerminalOutput(chunk, targetId);
+  if (targetId !== activeTerminalTabId) {
+    renderTerminalTabs();
+  }
 });
 window.cmdfindDesktop.onUpdateState((state) => {
   renderUpdateState(state);

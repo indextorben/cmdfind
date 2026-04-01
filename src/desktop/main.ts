@@ -31,7 +31,7 @@ type TerminalSession =
       kill: () => void;
     };
 
-const terminalSessions = new Map<number, TerminalSession>();
+const terminalSessions = new Map<string, TerminalSession>();
 let mainWindow: BrowserWindow | null = null;
 let quickSearchWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -40,6 +40,23 @@ let registeredGlobalShortcut: string | null = null;
 let appIsQuitting = false;
 const DEFAULT_GLOBAL_SEARCH_SHORTCUT = "CommandOrControl+B";
 const DEFAULT_MENU_BAR_ENABLED = true;
+
+function terminalSessionKey(webContentsId: number, sessionId = 1): string {
+  return `${webContentsId}:${sessionId}`;
+}
+
+function cleanupTerminalSessionsForWebContents(webContentsId: number): void {
+  const prefix = `${webContentsId}:`;
+  for (const [key, session] of terminalSessions.entries()) {
+    if (!key.startsWith(prefix)) continue;
+    try {
+      session.kill();
+    } catch {
+      // ignore
+    }
+    terminalSessions.delete(key);
+  }
+}
 
 type UpdateState =
   | { status: "idle"; message: string; currentVersion: string }
@@ -329,15 +346,7 @@ function createWindow(): void {
   });
 
   window.on("closed", () => {
-    const session = terminalSessions.get(webContentsId);
-    if (session) {
-      try {
-        session.kill();
-      } catch {
-        // ignore
-      }
-    }
-    terminalSessions.delete(webContentsId);
+    cleanupTerminalSessionsForWebContents(webContentsId);
     if (mainWindow === window) {
       mainWindow = null;
     }
@@ -763,19 +772,21 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("cmdfind:terminal-start", (event) => {
+ipcMain.handle("cmdfind:terminal-start", (event, sessionIdRaw?: number) => {
   const senderId = event.sender.id;
+  const sessionId = Number.isFinite(sessionIdRaw) ? Math.max(1, Math.floor(sessionIdRaw as number)) : 1;
+  const sessionKey = terminalSessionKey(senderId, sessionId);
   const sendTerminalOutput = (message: string): void => {
     try {
       if (event.sender.isDestroyed()) {
         return;
       }
-      event.sender.send("cmdfind:terminal-output", message);
+      event.sender.send("cmdfind:terminal-output", { sessionId, chunk: message });
     } catch {
       // Renderer already gone; ignore late PTY/process events during shutdown.
     }
   };
-  const existing = terminalSessions.get(senderId);
+  const existing = terminalSessions.get(sessionKey);
   if (existing) {
     return true;
   }
@@ -838,7 +849,7 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
       env: terminalEnv
     });
 
-    terminalSessions.set(senderId, {
+    terminalSessions.set(sessionKey, {
       kind: "pty",
       write: (input: string) => ptyChild.write(input),
       kill: () => ptyChild.kill(),
@@ -849,7 +860,7 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
     });
 
     ptyChild.onExit(({ exitCode }) => {
-      terminalSessions.delete(senderId);
+      terminalSessions.delete(sessionKey);
       sendTerminalOutput(`\n[terminal exited with code ${exitCode}]\n`);
     });
 
@@ -863,7 +874,7 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
         env: terminalEnv
       });
 
-      terminalSessions.set(senderId, {
+      terminalSessions.set(sessionKey, {
         kind: "process",
         process: proc,
         write: (input: string) => proc.stdin.write(input),
@@ -876,7 +887,7 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
         sendTerminalOutput(chunk.toString());
       });
       proc.on("exit", (code) => {
-        terminalSessions.delete(senderId);
+        terminalSessions.delete(sessionKey);
         sendTerminalOutput(`\n[terminal exited with code ${code ?? 0}]\n`);
       });
       proc.on("error", (error) => {
@@ -895,9 +906,10 @@ ipcMain.handle("cmdfind:terminal-start", (event) => {
   return true;
 });
 
-ipcMain.handle("cmdfind:terminal-input", (event, input: string) => {
+ipcMain.handle("cmdfind:terminal-input", (event, input: string, sessionIdRaw?: number) => {
   const senderId = event.sender.id;
-  const session = terminalSessions.get(senderId);
+  const sessionId = Number.isFinite(sessionIdRaw) ? Math.max(1, Math.floor(sessionIdRaw as number)) : 1;
+  const session = terminalSessions.get(terminalSessionKey(senderId, sessionId));
   if (!session) {
     return false;
   }
@@ -906,9 +918,11 @@ ipcMain.handle("cmdfind:terminal-input", (event, input: string) => {
   return true;
 });
 
-ipcMain.handle("cmdfind:terminal-stop", (event) => {
+ipcMain.handle("cmdfind:terminal-stop", (event, sessionIdRaw?: number) => {
   const senderId = event.sender.id;
-  const session = terminalSessions.get(senderId);
+  const sessionId = Number.isFinite(sessionIdRaw) ? Math.max(1, Math.floor(sessionIdRaw as number)) : 1;
+  const sessionKey = terminalSessionKey(senderId, sessionId);
+  const session = terminalSessions.get(sessionKey);
   if (!session) {
     return true;
   }
@@ -918,13 +932,14 @@ ipcMain.handle("cmdfind:terminal-stop", (event) => {
   } catch {
     // ignore
   }
-  terminalSessions.delete(senderId);
+  terminalSessions.delete(sessionKey);
   return true;
 });
 
-ipcMain.handle("cmdfind:terminal-resize", (event, cols: number, rows: number) => {
+ipcMain.handle("cmdfind:terminal-resize", (event, cols: number, rows: number, sessionIdRaw?: number) => {
   const senderId = event.sender.id;
-  const session = terminalSessions.get(senderId);
+  const sessionId = Number.isFinite(sessionIdRaw) ? Math.max(1, Math.floor(sessionIdRaw as number)) : 1;
+  const session = terminalSessions.get(terminalSessionKey(senderId, sessionId));
   if (!session || session.kind !== "pty") {
     return false;
   }

@@ -22,6 +22,7 @@ type DesktopApi = {
     disableLocalIndex?: boolean;
   }) => Promise<SearchResponse>;
   onQuickFocus: (callback: () => void) => () => void;
+  onQuickPrefill: (callback: (value: string) => void) => () => void;
 };
 
 const api = (window as Window & { cmdfindDesktop: DesktopApi }).cmdfindDesktop;
@@ -106,6 +107,13 @@ resultsEl.addEventListener("click", async (event) => {
 api.onQuickFocus(() => {
   queryInput.focus();
   queryInput.select();
+});
+
+api.onQuickPrefill((value) => {
+  queryInput.value = value;
+  queryInput.focus();
+  queryInput.select();
+  void runQuickSearch();
 });
 
 window.addEventListener("focus", () => {
