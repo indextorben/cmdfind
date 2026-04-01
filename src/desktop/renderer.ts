@@ -125,6 +125,12 @@ const welcomeContent = document.querySelector<HTMLElement>("#welcomeContent")!;
 const welcomeStartBtn = document.querySelector<HTMLButtonElement>("#welcomeStartBtn")!;
 const themeSelect = document.querySelector<HTMLSelectElement>("#themeSelect")!;
 const backgroundPresetSelect = document.querySelector<HTMLSelectElement>("#backgroundPreset")!;
+const appBackgroundFileInput = document.querySelector<HTMLInputElement>("#appBackgroundFile")!;
+const appBackgroundClearBtn = document.querySelector<HTMLButtonElement>("#appBackgroundClear")!;
+const appBackgroundStatus = document.querySelector<HTMLElement>("#appBackgroundStatus")!;
+const terminalBackgroundFileInput = document.querySelector<HTMLInputElement>("#terminalBackgroundFile")!;
+const terminalBackgroundClearBtn = document.querySelector<HTMLButtonElement>("#terminalBackgroundClear")!;
+const terminalBackgroundStatus = document.querySelector<HTMLElement>("#terminalBackgroundStatus")!;
 const uiFontPresetSelect = document.querySelector<HTMLSelectElement>("#uiFontPreset")!;
 const terminalFontPresetSelect = document.querySelector<HTMLSelectElement>("#terminalFontPreset")!;
 const renderingModeSelect = document.querySelector<HTMLSelectElement>("#renderingMode")!;
@@ -156,6 +162,8 @@ type UiSettings = {
   safetyLayerMode: "confirm-dangerous" | "confirm-careful" | "block-dangerous";
   theme: "midnight" | "slate" | "graphite" | "sunset" | "emerald" | "amber" | "cyber" | "rose";
   backgroundPreset: "aurora" | "deep" | "slate" | "sunset" | "pitch";
+  appBackgroundImage: string;
+  terminalBackgroundImage: string;
   uiFontPreset: "jetbrains" | "inter" | "sf" | "fira";
   terminalFontPreset: "jetbrains" | "cascadia" | "menlo" | "fira";
   renderingMode: "balanced" | "smooth" | "sharp";
@@ -244,6 +252,14 @@ const i18n = {
     uiLanguageLabel: "App-Sprache",
     themeLabel: "Theme",
     backgroundPresetLabel: "Hintergrund-Modus",
+    appBackgroundImageLabel: "Eigener App-Hintergrund (PNG/JPG/WebP)",
+    terminalBackgroundImageLabel: "Eigener Terminal-Hintergrund (PNG/JPG/WebP)",
+    backgroundImageNone: "Kein Bild ausgewählt.",
+    backgroundImageLoaded: "Bild aktiv.",
+    backgroundImageCleared: "Bild entfernt.",
+    backgroundImageInvalid: "Nur PNG, JPG oder WebP ist erlaubt.",
+    backgroundImageTooLarge: "Datei ist zu groß (max. 6 MB).",
+    backgroundImageClearButton: "Entfernen",
     backgroundPresetAurora: "Aurora",
     backgroundPresetDeep: "Deep Space",
     backgroundPresetSlate: "Slate Mist",
@@ -356,6 +372,14 @@ const i18n = {
     uiLanguageLabel: "App language",
     themeLabel: "Theme",
     backgroundPresetLabel: "Background mode",
+    appBackgroundImageLabel: "Custom app background (PNG/JPG/WebP)",
+    terminalBackgroundImageLabel: "Custom terminal background (PNG/JPG/WebP)",
+    backgroundImageNone: "No image selected.",
+    backgroundImageLoaded: "Image active.",
+    backgroundImageCleared: "Image removed.",
+    backgroundImageInvalid: "Only PNG, JPG, or WebP is allowed.",
+    backgroundImageTooLarge: "File is too large (max 6 MB).",
+    backgroundImageClearButton: "Remove",
     backgroundPresetAurora: "Aurora",
     backgroundPresetDeep: "Deep Space",
     backgroundPresetSlate: "Slate Mist",
@@ -419,6 +443,16 @@ const i18n = {
 
 function t(key: keyof typeof i18n.de): string {
   return i18n[currentUiLanguage][key];
+}
+
+let currentAppBackgroundImage = "";
+let currentTerminalBackgroundImage = "";
+
+function renderBackgroundStatusTexts(appMessage?: string, terminalMessage?: string): void {
+  appBackgroundStatus.textContent =
+    appMessage || (currentAppBackgroundImage ? t("backgroundImageLoaded") : t("backgroundImageNone"));
+  terminalBackgroundStatus.textContent =
+    terminalMessage || (currentTerminalBackgroundImage ? t("backgroundImageLoaded") : t("backgroundImageNone"));
 }
 
 function isMacPlatform(): boolean {
@@ -625,6 +659,10 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("uiLanguageLabel") as HTMLElement | null)?.replaceChildren(t("uiLanguageLabel"));
   (document.getElementById("themeLabel") as HTMLElement | null)?.replaceChildren(t("themeLabel"));
   (document.getElementById("backgroundPresetLabel") as HTMLElement | null)?.replaceChildren(t("backgroundPresetLabel"));
+  (document.getElementById("appBackgroundImageLabel") as HTMLElement | null)?.replaceChildren(t("appBackgroundImageLabel"));
+  (document.getElementById("terminalBackgroundImageLabel") as HTMLElement | null)?.replaceChildren(t("terminalBackgroundImageLabel"));
+  appBackgroundClearBtn.textContent = t("backgroundImageClearButton");
+  terminalBackgroundClearBtn.textContent = t("backgroundImageClearButton");
   (document.getElementById("backgroundPresetAurora") as HTMLElement | null)?.replaceChildren(t("backgroundPresetAurora"));
   (document.getElementById("backgroundPresetDeep") as HTMLElement | null)?.replaceChildren(t("backgroundPresetDeep"));
   (document.getElementById("backgroundPresetSlate") as HTMLElement | null)?.replaceChildren(t("backgroundPresetSlate"));
@@ -670,6 +708,7 @@ function applyUiLanguage(lang: "de" | "en"): void {
   welcomeStartBtn.textContent = t("welcomeStart");
   setShortcutInput(currentSearchShortcut || getDefaultSearchShortcut());
   renderSearchHistory();
+  renderBackgroundStatusTexts();
 }
 let terminalStarted = false;
 const terminalHistory: string[] = [];
@@ -1159,6 +1198,8 @@ function readUiSettings(): UiSettings {
         safetyLayerMode: "confirm-dangerous",
         theme: "midnight",
         backgroundPreset: "aurora",
+        appBackgroundImage: "",
+        terminalBackgroundImage: "",
         uiFontPreset: "jetbrains",
         terminalFontPreset: "jetbrains",
         renderingMode: "balanced",
@@ -1186,6 +1227,8 @@ function readUiSettings(): UiSettings {
       backgroundPreset: supportedBackgroundPresets.includes(parsed.backgroundPreset as UiSettings["backgroundPreset"])
         ? (parsed.backgroundPreset as UiSettings["backgroundPreset"])
         : "aurora",
+      appBackgroundImage: typeof parsed.appBackgroundImage === "string" ? parsed.appBackgroundImage : "",
+      terminalBackgroundImage: typeof parsed.terminalBackgroundImage === "string" ? parsed.terminalBackgroundImage : "",
       uiFontPreset: supportedUiFontPresets.includes(parsed.uiFontPreset as UiSettings["uiFontPreset"])
         ? (parsed.uiFontPreset as UiSettings["uiFontPreset"])
         : "jetbrains",
@@ -1214,6 +1257,8 @@ function readUiSettings(): UiSettings {
       safetyLayerMode: "confirm-dangerous",
       theme: "midnight",
       backgroundPreset: "aurora",
+      appBackgroundImage: "",
+      terminalBackgroundImage: "",
       uiFontPreset: "jetbrains",
       terminalFontPreset: "jetbrains",
       renderingMode: "balanced",
@@ -1241,10 +1286,17 @@ function applyUiSettings(settings: UiSettings): void {
     delete document.body.dataset.theme;
   }
   applyBackgroundPreset(settings.backgroundPreset);
+  currentAppBackgroundImage = settings.appBackgroundImage || "";
+  currentTerminalBackgroundImage = settings.terminalBackgroundImage || "";
   applyFontAndRendering(settings.uiFontPreset, settings.terminalFontPreset, settings.renderingMode);
   applyTerminalThemePreset(settings.terminalThemePreset);
 
   const root = document.documentElement;
+  root.style.setProperty("--app-custom-bg-image", currentAppBackgroundImage ? `url("${currentAppBackgroundImage}")` : "none");
+  root.style.setProperty(
+    "--terminal-custom-bg-image",
+    currentTerminalBackgroundImage ? `url("${currentTerminalBackgroundImage}")` : "none"
+  );
   root.style.setProperty("--primary", settings.accent);
   root.style.setProperty("--line-strong", `${settings.accent}88`);
   root.style.setProperty("--radius", `${settings.radius}px`);
@@ -1276,6 +1328,9 @@ function applyUiSettings(settings: UiSettings): void {
   menuBarEnabledCheckbox.checked = settings.menuBarEnabled;
   backgroundModeEnabledCheckbox.checked = settings.backgroundModeEnabled;
   menuBarEnabledCheckbox.disabled = !isMacPlatform();
+  appBackgroundFileInput.value = "";
+  terminalBackgroundFileInput.value = "";
+  renderBackgroundStatusTexts();
 
   if (terminalStarted) {
     const size = getTerminalSizeEstimate();
@@ -1706,6 +1761,66 @@ saveLangBtn.addEventListener("click", async () => {
   statusEl.textContent = `${t("saveLanguageSaved")} ${selected}`;
 });
 
+const MAX_BACKGROUND_IMAGE_BYTES = 6 * 1024 * 1024;
+
+function isSupportedBackgroundFile(file: File): boolean {
+  return ["image/png", "image/jpeg", "image/webp"].includes(file.type);
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function updateBackgroundSetting(
+  kind: "app" | "terminal",
+  dataUrl: string,
+  statusKey: "backgroundImageLoaded" | "backgroundImageCleared"
+): void {
+  const previous = readUiSettings();
+  const next: UiSettings = {
+    ...previous,
+    appBackgroundImage: kind === "app" ? dataUrl : previous.appBackgroundImage,
+    terminalBackgroundImage: kind === "terminal" ? dataUrl : previous.terminalBackgroundImage
+  };
+  applyUiSettings(next);
+  saveUiSettings(next);
+  if (kind === "app") {
+    renderBackgroundStatusTexts(t(statusKey), undefined);
+  } else {
+    renderBackgroundStatusTexts(undefined, t(statusKey));
+  }
+}
+
+async function handleBackgroundFilePick(kind: "app" | "terminal", fileInput: HTMLInputElement): Promise<void> {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  if (!isSupportedBackgroundFile(file)) {
+    statusEl.textContent = t("backgroundImageInvalid");
+    fileInput.value = "";
+    return;
+  }
+  if (file.size > MAX_BACKGROUND_IMAGE_BYTES) {
+    statusEl.textContent = t("backgroundImageTooLarge");
+    fileInput.value = "";
+    return;
+  }
+
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    updateBackgroundSetting(kind, dataUrl, "backgroundImageLoaded");
+    statusEl.textContent = `${kind === "app" ? t("appBackgroundImageLabel") : t("terminalBackgroundImageLabel")}: ${file.name}`;
+  } catch {
+    statusEl.textContent = t("backgroundImageInvalid");
+  } finally {
+    fileInput.value = "";
+  }
+}
+
 function setSettingsOpen(open: boolean): void {
   settingsPanel.hidden = !open;
   document.body.classList.toggle("settings-open", open);
@@ -1783,6 +1898,8 @@ function syncUiSettings(): void {
     backgroundPreset: supportedBackgroundPresets.includes(backgroundPresetSelect.value as UiSettings["backgroundPreset"])
       ? (backgroundPresetSelect.value as UiSettings["backgroundPreset"])
       : "aurora",
+    appBackgroundImage: currentAppBackgroundImage,
+    terminalBackgroundImage: currentTerminalBackgroundImage,
     uiFontPreset: supportedUiFontPresets.includes(uiFontPresetSelect.value as UiSettings["uiFontPreset"])
       ? (uiFontPresetSelect.value as UiSettings["uiFontPreset"])
       : "jetbrains",
@@ -1856,6 +1973,18 @@ safetyEnabledCheckbox.addEventListener("change", syncUiSettings);
 safetyModeSelect.addEventListener("change", syncUiSettings);
 menuBarEnabledCheckbox.addEventListener("change", syncUiSettings);
 backgroundModeEnabledCheckbox.addEventListener("change", syncUiSettings);
+appBackgroundFileInput.addEventListener("change", () => {
+  void handleBackgroundFilePick("app", appBackgroundFileInput);
+});
+terminalBackgroundFileInput.addEventListener("change", () => {
+  void handleBackgroundFilePick("terminal", terminalBackgroundFileInput);
+});
+appBackgroundClearBtn.addEventListener("click", () => {
+  updateBackgroundSetting("app", "", "backgroundImageCleared");
+});
+terminalBackgroundClearBtn.addEventListener("click", () => {
+  updateBackgroundSetting("terminal", "", "backgroundImageCleared");
+});
 
 searchShortcutInput.addEventListener("focus", () => {
   searchShortcutInput.select();

@@ -56,6 +56,8 @@
         --terminal-suggest-item-border: rgba(120, 146, 200, 0.22);
         --terminal-suggest-item-active-bg: rgba(145, 168, 218, 0.32);
         --terminal-suggest-item-active-fg: #f5f9ff;
+        --app-custom-bg-image: none;
+        --terminal-custom-bg-image: none;
         --shadow: 0 20px 44px rgba(5, 9, 20, 0.48);
       }
 
@@ -104,9 +106,14 @@
         font-family: var(--font-ui-stack);
         color: var(--text);
         background:
+          linear-gradient(180deg, rgba(7, 11, 20, 0.44), rgba(7, 11, 20, 0.44)),
+          var(--app-custom-bg-image),
           radial-gradient(1000px 520px at -10% -20%, var(--bg-orb-a) 0%, transparent 60%),
           radial-gradient(1000px 520px at 110% -30%, var(--bg-orb-b) 0%, transparent 64%),
           linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
+        background-size: auto, cover, auto, auto, auto;
+        background-position: center, center, center, center, center;
+        background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
         overflow: hidden;
         zoom: var(--ui-scale, 1);
       }
@@ -374,8 +381,13 @@
         border: 1px solid var(--terminal-panel-border);
         border-radius: calc(var(--radius) + 2px);
         background:
+          linear-gradient(180deg, rgba(4, 8, 18, 0.58), rgba(4, 8, 18, 0.58)),
+          var(--terminal-custom-bg-image),
           radial-gradient(700px 260px at 12% -10%, var(--terminal-panel-glow), transparent 64%),
           linear-gradient(170deg, var(--terminal-panel-bg-a), var(--terminal-panel-bg-b));
+        background-size: auto, cover, auto, auto;
+        background-position: center, center, center, center;
+        background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
         overflow: hidden;
         position: relative;
         box-shadow:
@@ -524,8 +536,13 @@
         white-space: pre-wrap;
         color: var(--terminal-output-fg);
         background:
+          linear-gradient(180deg, rgba(5, 9, 20, 0.6), rgba(5, 9, 20, 0.6)),
+          var(--terminal-custom-bg-image),
           radial-gradient(800px 240px at 80% -20%, var(--terminal-output-glow), transparent 68%),
           linear-gradient(180deg, var(--terminal-output-bg-a), var(--terminal-output-bg-b));
+        background-size: auto, cover, auto, auto;
+        background-position: center, center, center, center;
+        background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
       }
 
       .terminal-output .term-prompt {
@@ -663,7 +680,13 @@
         border: 0;
         box-shadow: none;
         z-index: 80;
-        background: #04070f;
+        background:
+          linear-gradient(180deg, rgba(4, 7, 15, 0.56), rgba(4, 7, 15, 0.56)),
+          var(--terminal-custom-bg-image),
+          #04070f;
+        background-size: auto, cover, auto;
+        background-position: center, center, center;
+        background-repeat: no-repeat, no-repeat, no-repeat;
       }
 
       body[data-terminal-mode="focus"] .terminal-head {
@@ -675,7 +698,13 @@
       body[data-terminal-mode="focus"] .terminal-output {
         height: calc(100vh - var(--terminal-head-height) - var(--terminal-form-height) - var(--terminal-inline-hint-height));
         padding-bottom: calc(var(--terminal-form-height) + var(--terminal-inline-hint-height) + 14px);
-        background: #04070f;
+        background:
+          linear-gradient(180deg, rgba(4, 7, 15, 0.6), rgba(4, 7, 15, 0.6)),
+          var(--terminal-custom-bg-image),
+          #04070f;
+        background-size: auto, cover, auto;
+        background-position: center, center, center;
+        background-repeat: no-repeat, no-repeat, no-repeat;
       }
 
       body[data-terminal-mode="focus"] .terminal-inline-hint {
@@ -966,6 +995,23 @@
         font-size: 11px;
         color: #98a8cc;
         line-height: 1.35;
+      }
+
+      .bg-upload-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .bg-upload-row input[type="file"] {
+        font-size: 12px;
+      }
+
+      .bg-upload-clear {
+        border-radius: 9px;
+        padding: 8px 10px;
+        font-size: 12px;
       }
 
       .setting-conflict {
@@ -1406,6 +1452,24 @@
             <option id="backgroundPresetSunset" value="sunset">Sunset Glow</option>
             <option id="backgroundPresetPitch" value="pitch">Pitch Black</option>
           </select>
+        </div>
+
+        <div class="setting setting-wide">
+          <label id="appBackgroundImageLabel" for="appBackgroundFile">Eigener App-Hintergrund (PNG/JPG/WebP)</label>
+          <div class="bg-upload-row">
+            <input id="appBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp" />
+            <button id="appBackgroundClear" type="button" class="bg-upload-clear">Entfernen</button>
+          </div>
+          <div id="appBackgroundStatus" class="setting-help">Kein Bild ausgewählt.</div>
+        </div>
+
+        <div class="setting setting-wide">
+          <label id="terminalBackgroundImageLabel" for="terminalBackgroundFile">Eigener Terminal-Hintergrund (PNG/JPG/WebP)</label>
+          <div class="bg-upload-row">
+            <input id="terminalBackgroundFile" type="file" accept="image/png,image/jpeg,image/webp" />
+            <button id="terminalBackgroundClear" type="button" class="bg-upload-clear">Entfernen</button>
+          </div>
+          <div id="terminalBackgroundStatus" class="setting-help">Kein Bild ausgewählt.</div>
         </div>
 
         <div class="setting">
