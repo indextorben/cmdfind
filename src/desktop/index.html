@@ -27,6 +27,33 @@
         --terminal-head-height: 42px;
         --terminal-form-height: 74px;
         --terminal-inline-hint-height: 20px;
+        --terminal-panel-border: color-mix(in srgb, var(--primary) 30%, var(--line));
+        --terminal-panel-glow: color-mix(in srgb, var(--primary) 22%, transparent);
+        --terminal-panel-bg-a: rgba(16, 23, 44, 0.94);
+        --terminal-panel-bg-b: rgba(8, 12, 24, 0.97);
+        --terminal-head-border: color-mix(in srgb, var(--primary) 24%, var(--line));
+        --terminal-head-bg-a: rgba(22, 31, 58, 0.82);
+        --terminal-head-bg-b: rgba(14, 22, 43, 0.76);
+        --terminal-output-fg: #e8f1ff;
+        --terminal-output-glow: rgba(108, 165, 255, 0.12);
+        --terminal-output-bg-a: rgba(6, 10, 22, 0.96);
+        --terminal-output-bg-b: rgba(5, 9, 20, 0.98);
+        --terminal-prompt-color: #8fc0ff;
+        --terminal-command-color: #eaf3ff;
+        --terminal-error-color: #ff8d9d;
+        --terminal-warn-color: #ffd58b;
+        --terminal-ok-color: #93efba;
+        --terminal-badge-color: #b7cdff;
+        --terminal-sub-color: #a9bbdf;
+        --terminal-form-border: color-mix(in srgb, var(--primary) 24%, var(--line));
+        --terminal-form-bg: rgba(10, 16, 31, 0.82);
+        --terminal-inline-hint-color: #95a7cb;
+        --terminal-suggest-border: color-mix(in srgb, var(--primary) 30%, var(--line));
+        --terminal-suggest-bg: rgba(11, 17, 33, 0.96);
+        --terminal-suggest-item-bg: rgba(100, 120, 160, 0.16);
+        --terminal-suggest-item-border: rgba(120, 146, 200, 0.22);
+        --terminal-suggest-item-active-bg: rgba(145, 168, 218, 0.32);
+        --terminal-suggest-item-active-fg: #f5f9ff;
         --shadow: 0 20px 44px rgba(5, 9, 20, 0.48);
       }
 
@@ -324,11 +351,11 @@
 
       .terminal-panel {
         margin-top: 14px;
-        border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--line));
+        border: 1px solid var(--terminal-panel-border);
         border-radius: calc(var(--radius) + 2px);
         background:
-          radial-gradient(700px 260px at 12% -10%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 64%),
-          linear-gradient(170deg, rgba(16, 23, 44, 0.94), rgba(8, 12, 24, 0.97));
+          radial-gradient(700px 260px at 12% -10%, var(--terminal-panel-glow), transparent 64%),
+          linear-gradient(170deg, var(--terminal-panel-bg-a), var(--terminal-panel-bg-b));
         overflow: hidden;
         position: relative;
         box-shadow:
@@ -345,8 +372,8 @@
         align-items: center;
         justify-content: space-between;
         padding: 10px 12px;
-        border-bottom: 1px solid color-mix(in srgb, var(--primary) 24%, var(--line));
-        background: linear-gradient(180deg, rgba(22, 31, 58, 0.82), rgba(14, 22, 43, 0.76));
+        border-bottom: 1px solid var(--terminal-head-border);
+        background: linear-gradient(180deg, var(--terminal-head-bg-a), var(--terminal-head-bg-b));
       }
 
       .terminal-focus-left,
@@ -407,38 +434,38 @@
         font-size: var(--terminal-font-size);
         line-height: 1.5;
         white-space: pre-wrap;
-        color: #e8f1ff;
+        color: var(--terminal-output-fg);
         background:
-          radial-gradient(800px 240px at 80% -20%, rgba(108, 165, 255, 0.12), transparent 68%),
-          linear-gradient(180deg, rgba(6, 10, 22, 0.96), rgba(5, 9, 20, 0.98));
+          radial-gradient(800px 240px at 80% -20%, var(--terminal-output-glow), transparent 68%),
+          linear-gradient(180deg, var(--terminal-output-bg-a), var(--terminal-output-bg-b));
       }
 
       .terminal-output .term-prompt {
-        color: #8fc0ff;
+        color: var(--terminal-prompt-color);
         font-weight: 700;
       }
 
       .terminal-output .term-command {
-        color: #eaf3ff;
+        color: var(--terminal-command-color);
       }
 
       .terminal-output .term-error {
-        color: #ff8d9d;
+        color: var(--terminal-error-color);
         font-weight: 700;
       }
 
       .terminal-output .term-warn {
-        color: #ffd58b;
+        color: var(--terminal-warn-color);
         font-weight: 700;
       }
 
       .terminal-output .term-ok {
-        color: #93efba;
+        color: var(--terminal-ok-color);
         font-weight: 700;
       }
 
       .terminal-output .term-line-badge {
-        color: #b7cdff;
+        color: var(--terminal-badge-color);
         font-weight: 700;
       }
 
@@ -448,7 +475,7 @@
       }
 
       .terminal-output .term-cmdfind-sub {
-        color: #a9bbdf;
+        color: var(--terminal-sub-color);
       }
 
       .terminal-output .term-cmdfind-c { color: #ff5a6d; }
@@ -464,14 +491,14 @@
         grid-template-columns: 1fr auto;
         gap: 8px;
         padding: 10px 12px 12px;
-        border-top: 1px solid color-mix(in srgb, var(--primary) 24%, var(--line));
-        background: rgba(10, 16, 31, 0.82);
+        border-top: 1px solid var(--terminal-form-border);
+        background: var(--terminal-form-bg);
       }
 
       .terminal-inline-hint {
         padding: 6px 14px 0;
         font-size: 12px;
-        color: #95a7cb;
+        color: var(--terminal-inline-hint-color);
         min-height: 18px;
       }
 
@@ -486,9 +513,9 @@
         right: 12px;
         bottom: 64px;
         margin: 0;
-        border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--line));
+        border: 1px solid var(--terminal-suggest-border);
         border-radius: 10px;
-        background: rgba(11, 17, 33, 0.96);
+        background: var(--terminal-suggest-bg);
         overflow: hidden;
         max-height: 220px;
         overflow-y: auto;
@@ -504,9 +531,9 @@
         width: 100%;
         text-align: left;
         border: 0;
-        border-top: 1px solid rgba(120, 146, 200, 0.22);
+        border-top: 1px solid var(--terminal-suggest-item-border);
         border-radius: 0;
-        background: rgba(100, 120, 160, 0.16);
+        background: var(--terminal-suggest-item-bg);
         color: #d9e6ff;
         padding: 8px 10px;
         min-height: 44px;
@@ -519,8 +546,8 @@
       }
 
       .terminal-suggest-item.is-active {
-        background: rgba(145, 168, 218, 0.32);
-        color: #f5f9ff;
+        background: var(--terminal-suggest-item-active-bg);
+        color: var(--terminal-suggest-item-active-fg);
       }
 
       body[data-terminal-mode="focus"] .wrap {
@@ -1279,6 +1306,17 @@
         <div class="setting">
           <label id="terminalFontLabel" for="terminalFontSize">Terminal-Schriftgröße</label>
           <input id="terminalFontSize" type="range" min="13" max="24" value="16" />
+        </div>
+
+        <div class="setting">
+          <label id="terminalThemePresetLabel" for="terminalThemePreset">Terminal-Theme</label>
+          <select id="terminalThemePreset">
+            <option id="terminalThemePresetClassic" value="classic">Classic Night</option>
+            <option id="terminalThemePresetMatrix" value="matrix">Matrix Green</option>
+            <option id="terminalThemePresetSunset" value="sunset">Sunset Ops</option>
+            <option id="terminalThemePresetIce" value="ice">Ice Blue</option>
+            <option id="terminalThemePresetMono" value="mono">Mono Contrast</option>
+          </select>
         </div>
 
         <div class="setting setting-block">

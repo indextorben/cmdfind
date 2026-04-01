@@ -127,6 +127,7 @@ const uiScale = document.querySelector<HTMLInputElement>("#uiScale")!;
 const radiusScale = document.querySelector<HTMLInputElement>("#radiusScale")!;
 const terminalHeightRange = document.querySelector<HTMLInputElement>("#terminalHeight")!;
 const terminalFontSizeRange = document.querySelector<HTMLInputElement>("#terminalFontSize")!;
+const terminalThemePresetSelect = document.querySelector<HTMLSelectElement>("#terminalThemePreset")!;
 const terminalToggle = document.querySelector<HTMLButtonElement>("#terminalToggle")!;
 const terminalPanel = document.querySelector<HTMLElement>("#terminalPanel")!;
 const terminalHead = document.querySelector<HTMLElement>(".terminal-head")!;
@@ -144,6 +145,7 @@ type UiSettings = {
   uiLanguage: "de" | "en";
   searchShortcut: string;
   theme: "midnight" | "slate" | "graphite" | "sunset" | "emerald" | "amber" | "cyber" | "rose";
+  terminalThemePreset: "classic" | "matrix" | "sunset" | "ice" | "mono";
   accent: string;
   scale: number;
   radius: number;
@@ -163,6 +165,7 @@ const favoritesKey = "cmdfind:desktop:favorites";
 const searchHistoryKey = "cmdfind:desktop:search-history";
 const onboardingSeenKey = "cmdfind:desktop:onboarding-seen-v1";
 const supportedThemes: UiSettings["theme"][] = ["midnight", "slate", "graphite", "sunset", "emerald", "amber", "cyber", "rose"];
+const supportedTerminalThemes: UiSettings["terminalThemePreset"][] = ["classic", "matrix", "sunset", "ice", "mono"];
 let currentUiLanguage: "de" | "en" = "de";
 let currentSearchShortcut = "";
 let lastSyncedGlobalShortcut = "";
@@ -210,6 +213,12 @@ const i18n = {
     radiusLabel: "Rundungen",
     terminalHeightLabel: "Terminal-Höhe",
     terminalFontLabel: "Terminal-Schriftgröße",
+    terminalThemePresetLabel: "Terminal-Theme",
+    terminalThemePresetClassic: "Classic Night",
+    terminalThemePresetMatrix: "Matrix Green",
+    terminalThemePresetSunset: "Sunset Ops",
+    terminalThemePresetIce: "Ice Blue",
+    terminalThemePresetMono: "Mono Contrast",
     systemTitle: "System",
     menuBarLabel: "Menüleisten-Icon (macOS)",
     backgroundModeLabel: "Im Hintergrund weiterlaufen (Shortcut aktiv)",
@@ -278,6 +287,12 @@ const i18n = {
     radiusLabel: "Radius",
     terminalHeightLabel: "Terminal height",
     terminalFontLabel: "Terminal font size",
+    terminalThemePresetLabel: "Terminal theme",
+    terminalThemePresetClassic: "Classic Night",
+    terminalThemePresetMatrix: "Matrix Green",
+    terminalThemePresetSunset: "Sunset Ops",
+    terminalThemePresetIce: "Ice Blue",
+    terminalThemePresetMono: "Mono Contrast",
     systemTitle: "System",
     menuBarLabel: "Menu bar icon (macOS)",
     backgroundModeLabel: "Run in background (shortcut stays active)",
@@ -515,6 +530,12 @@ function applyUiLanguage(lang: "de" | "en"): void {
   (document.getElementById("radiusLabel") as HTMLElement | null)?.replaceChildren(t("radiusLabel"));
   (document.getElementById("terminalHeightLabel") as HTMLElement | null)?.replaceChildren(t("terminalHeightLabel"));
   (document.getElementById("terminalFontLabel") as HTMLElement | null)?.replaceChildren(t("terminalFontLabel"));
+  (document.getElementById("terminalThemePresetLabel") as HTMLElement | null)?.replaceChildren(t("terminalThemePresetLabel"));
+  (document.getElementById("terminalThemePresetClassic") as HTMLElement | null)?.replaceChildren(t("terminalThemePresetClassic"));
+  (document.getElementById("terminalThemePresetMatrix") as HTMLElement | null)?.replaceChildren(t("terminalThemePresetMatrix"));
+  (document.getElementById("terminalThemePresetSunset") as HTMLElement | null)?.replaceChildren(t("terminalThemePresetSunset"));
+  (document.getElementById("terminalThemePresetIce") as HTMLElement | null)?.replaceChildren(t("terminalThemePresetIce"));
+  (document.getElementById("terminalThemePresetMono") as HTMLElement | null)?.replaceChildren(t("terminalThemePresetMono"));
   (document.getElementById("systemTitle") as HTMLElement | null)?.replaceChildren(t("systemTitle"));
   menuBarLabel.replaceChildren(t("menuBarLabel"));
   backgroundModeLabel.replaceChildren(t("backgroundModeLabel"));
@@ -704,6 +725,161 @@ function moveQuickSettingsFocus(current: HTMLElement, direction: "left" | "right
   }
 }
 
+function applyTerminalThemePreset(preset: UiSettings["terminalThemePreset"]): void {
+  const root = document.documentElement;
+  const varsByPreset: Record<UiSettings["terminalThemePreset"], Record<string, string>> = {
+    classic: {
+      "--terminal-panel-border": "color-mix(in srgb, var(--primary) 30%, var(--line))",
+      "--terminal-panel-glow": "color-mix(in srgb, var(--primary) 22%, transparent)",
+      "--terminal-panel-bg-a": "rgba(16, 23, 44, 0.94)",
+      "--terminal-panel-bg-b": "rgba(8, 12, 24, 0.97)",
+      "--terminal-head-border": "color-mix(in srgb, var(--primary) 24%, var(--line))",
+      "--terminal-head-bg-a": "rgba(22, 31, 58, 0.82)",
+      "--terminal-head-bg-b": "rgba(14, 22, 43, 0.76)",
+      "--terminal-output-fg": "#e8f1ff",
+      "--terminal-output-glow": "rgba(108, 165, 255, 0.12)",
+      "--terminal-output-bg-a": "rgba(6, 10, 22, 0.96)",
+      "--terminal-output-bg-b": "rgba(5, 9, 20, 0.98)",
+      "--terminal-prompt-color": "#8fc0ff",
+      "--terminal-command-color": "#eaf3ff",
+      "--terminal-error-color": "#ff8d9d",
+      "--terminal-warn-color": "#ffd58b",
+      "--terminal-ok-color": "#93efba",
+      "--terminal-badge-color": "#b7cdff",
+      "--terminal-sub-color": "#a9bbdf",
+      "--terminal-form-border": "color-mix(in srgb, var(--primary) 24%, var(--line))",
+      "--terminal-form-bg": "rgba(10, 16, 31, 0.82)",
+      "--terminal-inline-hint-color": "#95a7cb",
+      "--terminal-suggest-border": "color-mix(in srgb, var(--primary) 30%, var(--line))",
+      "--terminal-suggest-bg": "rgba(11, 17, 33, 0.96)",
+      "--terminal-suggest-item-bg": "rgba(100, 120, 160, 0.16)",
+      "--terminal-suggest-item-border": "rgba(120, 146, 200, 0.22)",
+      "--terminal-suggest-item-active-bg": "rgba(145, 168, 218, 0.32)",
+      "--terminal-suggest-item-active-fg": "#f5f9ff"
+    },
+    matrix: {
+      "--terminal-panel-border": "rgba(74, 185, 124, 0.42)",
+      "--terminal-panel-glow": "rgba(74, 185, 124, 0.26)",
+      "--terminal-panel-bg-a": "rgba(8, 23, 15, 0.94)",
+      "--terminal-panel-bg-b": "rgba(4, 13, 8, 0.97)",
+      "--terminal-head-border": "rgba(74, 185, 124, 0.32)",
+      "--terminal-head-bg-a": "rgba(13, 33, 22, 0.9)",
+      "--terminal-head-bg-b": "rgba(9, 22, 15, 0.84)",
+      "--terminal-output-fg": "#dafbe8",
+      "--terminal-output-glow": "rgba(74, 185, 124, 0.16)",
+      "--terminal-output-bg-a": "rgba(3, 14, 7, 0.97)",
+      "--terminal-output-bg-b": "rgba(2, 9, 4, 0.99)",
+      "--terminal-prompt-color": "#7dffb1",
+      "--terminal-command-color": "#e2ffef",
+      "--terminal-error-color": "#ff8a99",
+      "--terminal-warn-color": "#ffd178",
+      "--terminal-ok-color": "#8ef5b2",
+      "--terminal-badge-color": "#baf7d2",
+      "--terminal-sub-color": "#8ed0ad",
+      "--terminal-form-border": "rgba(74, 185, 124, 0.3)",
+      "--terminal-form-bg": "rgba(7, 20, 12, 0.9)",
+      "--terminal-inline-hint-color": "#7cbf9b",
+      "--terminal-suggest-border": "rgba(74, 185, 124, 0.38)",
+      "--terminal-suggest-bg": "rgba(7, 22, 13, 0.96)",
+      "--terminal-suggest-item-bg": "rgba(74, 185, 124, 0.12)",
+      "--terminal-suggest-item-border": "rgba(95, 206, 143, 0.24)",
+      "--terminal-suggest-item-active-bg": "rgba(95, 206, 143, 0.26)",
+      "--terminal-suggest-item-active-fg": "#eefff5"
+    },
+    sunset: {
+      "--terminal-panel-border": "rgba(255, 146, 99, 0.44)",
+      "--terminal-panel-glow": "rgba(255, 132, 86, 0.28)",
+      "--terminal-panel-bg-a": "rgba(36, 20, 24, 0.94)",
+      "--terminal-panel-bg-b": "rgba(16, 9, 13, 0.97)",
+      "--terminal-head-border": "rgba(255, 146, 99, 0.3)",
+      "--terminal-head-bg-a": "rgba(54, 28, 30, 0.88)",
+      "--terminal-head-bg-b": "rgba(30, 17, 20, 0.82)",
+      "--terminal-output-fg": "#ffe7df",
+      "--terminal-output-glow": "rgba(255, 140, 92, 0.16)",
+      "--terminal-output-bg-a": "rgba(22, 12, 17, 0.97)",
+      "--terminal-output-bg-b": "rgba(12, 8, 13, 0.99)",
+      "--terminal-prompt-color": "#ffb39a",
+      "--terminal-command-color": "#fff1ed",
+      "--terminal-error-color": "#ff8596",
+      "--terminal-warn-color": "#ffd284",
+      "--terminal-ok-color": "#92ecb7",
+      "--terminal-badge-color": "#ffd1c4",
+      "--terminal-sub-color": "#dfaf9e",
+      "--terminal-form-border": "rgba(255, 146, 99, 0.3)",
+      "--terminal-form-bg": "rgba(22, 11, 15, 0.9)",
+      "--terminal-inline-hint-color": "#d0a090",
+      "--terminal-suggest-border": "rgba(255, 146, 99, 0.38)",
+      "--terminal-suggest-bg": "rgba(27, 14, 18, 0.96)",
+      "--terminal-suggest-item-bg": "rgba(255, 146, 99, 0.12)",
+      "--terminal-suggest-item-border": "rgba(255, 162, 120, 0.24)",
+      "--terminal-suggest-item-active-bg": "rgba(255, 162, 120, 0.26)",
+      "--terminal-suggest-item-active-fg": "#fff5f1"
+    },
+    ice: {
+      "--terminal-panel-border": "rgba(127, 196, 255, 0.42)",
+      "--terminal-panel-glow": "rgba(127, 196, 255, 0.26)",
+      "--terminal-panel-bg-a": "rgba(16, 29, 43, 0.94)",
+      "--terminal-panel-bg-b": "rgba(8, 15, 24, 0.97)",
+      "--terminal-head-border": "rgba(127, 196, 255, 0.3)",
+      "--terminal-head-bg-a": "rgba(24, 38, 56, 0.88)",
+      "--terminal-head-bg-b": "rgba(15, 25, 38, 0.82)",
+      "--terminal-output-fg": "#ecf8ff",
+      "--terminal-output-glow": "rgba(127, 196, 255, 0.18)",
+      "--terminal-output-bg-a": "rgba(8, 18, 30, 0.97)",
+      "--terminal-output-bg-b": "rgba(4, 10, 18, 0.99)",
+      "--terminal-prompt-color": "#9bd7ff",
+      "--terminal-command-color": "#f2fbff",
+      "--terminal-error-color": "#ff9aac",
+      "--terminal-warn-color": "#ffe199",
+      "--terminal-ok-color": "#a4f2d0",
+      "--terminal-badge-color": "#c5e8ff",
+      "--terminal-sub-color": "#abd0eb",
+      "--terminal-form-border": "rgba(127, 196, 255, 0.28)",
+      "--terminal-form-bg": "rgba(9, 19, 30, 0.9)",
+      "--terminal-inline-hint-color": "#9abdd9",
+      "--terminal-suggest-border": "rgba(127, 196, 255, 0.36)",
+      "--terminal-suggest-bg": "rgba(11, 22, 35, 0.96)",
+      "--terminal-suggest-item-bg": "rgba(127, 196, 255, 0.12)",
+      "--terminal-suggest-item-border": "rgba(157, 212, 255, 0.22)",
+      "--terminal-suggest-item-active-bg": "rgba(157, 212, 255, 0.26)",
+      "--terminal-suggest-item-active-fg": "#f2fbff"
+    },
+    mono: {
+      "--terminal-panel-border": "rgba(214, 220, 233, 0.32)",
+      "--terminal-panel-glow": "rgba(168, 181, 207, 0.16)",
+      "--terminal-panel-bg-a": "rgba(18, 21, 29, 0.95)",
+      "--terminal-panel-bg-b": "rgba(10, 12, 17, 0.98)",
+      "--terminal-head-border": "rgba(214, 220, 233, 0.24)",
+      "--terminal-head-bg-a": "rgba(33, 37, 48, 0.9)",
+      "--terminal-head-bg-b": "rgba(19, 22, 31, 0.84)",
+      "--terminal-output-fg": "#eef1f8",
+      "--terminal-output-glow": "rgba(189, 197, 214, 0.08)",
+      "--terminal-output-bg-a": "rgba(12, 15, 22, 0.97)",
+      "--terminal-output-bg-b": "rgba(8, 10, 16, 0.99)",
+      "--terminal-prompt-color": "#bfd1ff",
+      "--terminal-command-color": "#f4f6fb",
+      "--terminal-error-color": "#ff9fb0",
+      "--terminal-warn-color": "#ffd9a0",
+      "--terminal-ok-color": "#a7d7be",
+      "--terminal-badge-color": "#d5dcef",
+      "--terminal-sub-color": "#b7bfd2",
+      "--terminal-form-border": "rgba(214, 220, 233, 0.22)",
+      "--terminal-form-bg": "rgba(16, 18, 27, 0.9)",
+      "--terminal-inline-hint-color": "#a4aec5",
+      "--terminal-suggest-border": "rgba(214, 220, 233, 0.3)",
+      "--terminal-suggest-bg": "rgba(17, 20, 30, 0.96)",
+      "--terminal-suggest-item-bg": "rgba(139, 149, 170, 0.14)",
+      "--terminal-suggest-item-border": "rgba(154, 165, 190, 0.22)",
+      "--terminal-suggest-item-active-bg": "rgba(165, 176, 200, 0.28)",
+      "--terminal-suggest-item-active-fg": "#f7f9ff"
+    }
+  };
+  const vars = varsByPreset[preset] ?? varsByPreset.classic;
+  for (const [key, value] of Object.entries(vars)) {
+    root.style.setProperty(key, value);
+  }
+}
+
 function readUiSettings(): UiSettings {
   try {
     const raw = localStorage.getItem(uiSettingsKey);
@@ -712,6 +888,7 @@ function readUiSettings(): UiSettings {
         uiLanguage: "de",
         searchShortcut: getDefaultSearchShortcut(),
         theme: "midnight",
+        terminalThemePreset: "classic",
         accent: "#6ca5ff",
         scale: 100,
         radius: 14,
@@ -728,6 +905,9 @@ function readUiSettings(): UiSettings {
       theme: supportedThemes.includes(parsed.theme as UiSettings["theme"])
         ? (parsed.theme as UiSettings["theme"])
         : "midnight",
+      terminalThemePreset: supportedTerminalThemes.includes(parsed.terminalThemePreset as UiSettings["terminalThemePreset"])
+        ? (parsed.terminalThemePreset as UiSettings["terminalThemePreset"])
+        : "classic",
       accent: typeof parsed.accent === "string" ? parsed.accent : "#6ca5ff",
       scale: typeof parsed.scale === "number" ? parsed.scale : 100,
       radius: typeof parsed.radius === "number" ? parsed.radius : 14,
@@ -741,6 +921,7 @@ function readUiSettings(): UiSettings {
       uiLanguage: "de",
       searchShortcut: getDefaultSearchShortcut(),
       theme: "midnight",
+      terminalThemePreset: "classic",
       accent: "#6ca5ff",
       scale: 100,
       radius: 14,
@@ -763,6 +944,7 @@ function applyUiSettings(settings: UiSettings): void {
   if (settings.theme === "midnight") {
     delete document.body.dataset.theme;
   }
+  applyTerminalThemePreset(settings.terminalThemePreset);
 
   const root = document.documentElement;
   root.style.setProperty("--primary", settings.accent);
@@ -780,6 +962,7 @@ function applyUiSettings(settings: UiSettings): void {
   setShortcutInput(currentSearchShortcut);
   setShortcutConflict(getReservedShortcutConflict(currentSearchShortcut));
   themeSelect.value = settings.theme;
+  terminalThemePresetSelect.value = settings.terminalThemePreset;
   accentColor.value = settings.accent;
   uiScale.value = String(clampedScale);
   radiusScale.value = String(settings.radius);
@@ -1190,6 +1373,9 @@ function syncUiSettings(): void {
     uiLanguage: uiLanguageSelect.value === "en" ? "en" : "de",
     searchShortcut: normalizeShortcut(searchShortcutInput.dataset.shortcut || currentSearchShortcut || getDefaultSearchShortcut()),
     theme: themeSelect.value as UiSettings["theme"],
+    terminalThemePreset: supportedTerminalThemes.includes(terminalThemePresetSelect.value as UiSettings["terminalThemePreset"])
+      ? (terminalThemePresetSelect.value as UiSettings["terminalThemePreset"])
+      : "classic",
     accent: accentColor.value,
     scale: Number(uiScale.value),
     radius: Number(radiusScale.value),
@@ -1237,6 +1423,7 @@ function syncUiSettings(): void {
 
 uiLanguageSelect.addEventListener("change", syncUiSettings);
 themeSelect.addEventListener("change", syncUiSettings);
+terminalThemePresetSelect.addEventListener("change", syncUiSettings);
 accentColor.addEventListener("input", syncUiSettings);
 uiScale.addEventListener("input", syncUiSettings);
 radiusScale.addEventListener("input", syncUiSettings);
