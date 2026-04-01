@@ -108,6 +108,7 @@
           radial-gradient(1000px 520px at 110% -30%, var(--bg-orb-b) 0%, transparent 64%),
           linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%);
         overflow: hidden;
+        zoom: var(--ui-scale, 1);
       }
 
       body[data-rendering="balanced"] {
@@ -165,7 +166,6 @@
         padding: 28px 0 34px;
         overflow-y: hidden;
         overflow-x: hidden;
-        zoom: var(--ui-scale, 1);
       }
 
       .wrap.can-scroll {
@@ -1443,7 +1443,7 @@
         </div>
 
         <div class="setting">
-          <label id="uiScaleLabel" for="uiScale">UI-Größe</label>
+          <label id="uiScaleLabel" for="uiScale">App- &amp; Schriftgröße</label>
           <input id="uiScale" type="range" min="90" max="120" value="100" />
         </div>
 
