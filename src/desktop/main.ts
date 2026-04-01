@@ -131,7 +131,9 @@ function refreshMacSpotlightIndex(): void {
     return;
   }
 
-  const bundlePath = getMacBundlePathFromExecPath();
+  const runningBundlePath = getMacBundlePathFromExecPath();
+  const defaultInstalledPath = path.join("/Applications", "cmdfind.app");
+  const bundlePath = fs.existsSync(defaultInstalledPath) ? defaultInstalledPath : runningBundlePath;
   if (!bundlePath || !bundlePath.endsWith(".app")) {
     return;
   }
@@ -483,18 +485,18 @@ function showQuickSearchWindowWithPrefill(prefill?: string): void {
 
 function createMacTrayImage(): Electron.NativeImage {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
-      <g fill="none" stroke="black" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="3" width="14" height="11.5" rx="2" stroke-width="1.8"/>
-        <path d="M5.2 7L7.3 8.6L5.2 10.2" stroke-width="1.9"/>
-        <path d="M9.1 10.3H12.7" stroke-width="1.9"/>
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+      <g fill="#000000">
+        <rect x="3" y="4" width="16" height="14" rx="3"/>
+        <rect x="4.5" y="5.5" width="13" height="11" rx="2" fill="#ffffff"/>
+        <path d="M7 9l2.3 2.1L7 13.2l1.1 1.2 3.6-3.3-3.6-3.3z" fill="#000000"/>
+        <rect x="11.7" y="12.3" width="3.9" height="1.4" rx="0.7" fill="#000000"/>
       </g>
     </svg>
   `;
-  const image = nativeImage
-    .createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
+  const image = nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`);
   image.setTemplateImage(true);
-  return image;
+  return image.resize({ width: 18, height: 18 });
 }
 
 function isMenuBarEnabled(): boolean {
@@ -516,10 +518,12 @@ function setupMacMenuBar(): void {
   const trayImage = createMacTrayImage();
   tray = new Tray(trayImage);
   tray.setToolTip("cmdfind");
-  // Icon-only tray item (no text label in menu bar).
-  tray.setTitle("");
-  tray.setImage(trayImage);
-  tray.setPressedImage(trayImage);
+  if (trayImage.isEmpty()) {
+    tray.setTitle(">_");
+  } else {
+    tray.setImage(trayImage);
+    tray.setPressedImage(trayImage);
+  }
 
   const buildTrayMenu = (): Electron.Menu => {
     return Menu.buildFromTemplate([
@@ -998,6 +1002,23 @@ ipcMain.handle("cmdfind:update-install", () => {
 });
 
 app.whenReady().then(() => {
+  if (process.platform === "darwin") {
+    app.setName("cmdfind");
+    try {
+      (app as Electron.App & { setActivationPolicy?: (policy: "regular" | "accessory" | "prohibited") => void })
+        .setActivationPolicy?.("regular");
+    } catch {
+      // ignore
+    }
+    try {
+      if (app.dock && !app.dock.isVisible()) {
+        app.dock.show();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   setupAutoUpdater();
   createWindow();
   setupMacMenuBar();
