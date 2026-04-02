@@ -894,7 +894,8 @@ function updateTerminalCurrentDirHintFromOutput(plainOutput: string): void {
 }
 
 function syncWrapScrollState(): void {
-  const needsScroll = wrapEl.scrollHeight - wrapEl.clientHeight > 2;
+  const overflowDelta = wrapEl.scrollHeight - wrapEl.clientHeight;
+  const needsScroll = overflowDelta > 10;
   wrapEl.classList.toggle("can-scroll", needsScroll);
 }
 
@@ -1303,6 +1304,13 @@ function applyUiSettings(settings: UiSettings): void {
   root.style.setProperty("--radius-sm", `${Math.max(8, settings.radius - 4)}px`);
   const clampedScale = Math.max(90, Math.min(120, settings.scale));
   root.style.setProperty("--ui-scale", String(clampedScale / 100));
+  let scaleLevel: "md" | "lg" | "xl" = "md";
+  if (clampedScale >= 112) {
+    scaleLevel = "xl";
+  } else if (clampedScale >= 103) {
+    scaleLevel = "lg";
+  }
+  document.body.dataset.uiScaleLevel = scaleLevel;
   const clampedTerminalHeight = Math.max(260, Math.min(620, settings.terminalHeight));
   const clampedTerminalFontSize = Math.max(13, Math.min(24, settings.terminalFontSize));
   root.style.setProperty("--terminal-height", `${clampedTerminalHeight}px`);
