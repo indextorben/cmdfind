@@ -173,7 +173,7 @@
         height: 100vh;
         min-height: 100vh;
         margin: 0 auto;
-        padding: 28px 0 34px;
+        padding: 28px 0 calc(34px + var(--wrap-extra-scroll, 0px));
         overflow-x: visible;
         overflow-y: hidden;
       }
@@ -1311,7 +1311,7 @@
           height: 100vh;
           min-height: 100vh;
           margin: 0 auto;
-          padding: 12px 0;
+          padding: 12px 0 calc(12px + var(--wrap-extra-scroll, 0px));
         }
 
         .hero {

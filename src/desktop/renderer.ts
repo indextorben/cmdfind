@@ -894,8 +894,13 @@ function updateTerminalCurrentDirHintFromOutput(plainOutput: string): void {
 }
 
 function syncWrapScrollState(): void {
-  const overflowDelta = wrapEl.scrollHeight - wrapEl.clientHeight;
-  const needsScroll = overflowDelta > 10;
+  const layoutOverflow = wrapEl.scrollHeight - wrapEl.clientHeight;
+  const visualOverflow = Math.ceil(wrapEl.getBoundingClientRect().height - window.innerHeight);
+  const requiredExtraScroll = Math.max(0, visualOverflow - Math.max(0, layoutOverflow));
+  wrapEl.style.setProperty("--wrap-extra-scroll", `${requiredExtraScroll}px`);
+
+  const overflowDelta = Math.max(layoutOverflow + requiredExtraScroll, visualOverflow);
+  const needsScroll = overflowDelta > 4;
   wrapEl.classList.toggle("can-scroll", needsScroll);
 }
 
