@@ -730,6 +730,8 @@ let cachedTerminalFormHeight = 0;
 let cachedTerminalInlineHintHeight = 0;
 let terminalCurrentDirHint = "~";
 let wrapScrollRaf = 0;
+let wrapHasScroll = false;
+let lastWrapExtraScroll = -1;
 
 type TerminalTabSnapshot = {
   id: number;
@@ -897,11 +899,21 @@ function syncWrapScrollState(): void {
   const layoutOverflow = wrapEl.scrollHeight - wrapEl.clientHeight;
   const visualOverflow = Math.ceil(wrapEl.getBoundingClientRect().height - window.innerHeight);
   const requiredExtraScroll = Math.max(0, visualOverflow - Math.max(0, layoutOverflow));
-  wrapEl.style.setProperty("--wrap-extra-scroll", `${requiredExtraScroll}px`);
+  if (requiredExtraScroll !== lastWrapExtraScroll) {
+    wrapEl.style.setProperty("--wrap-extra-scroll", `${requiredExtraScroll}px`);
+    lastWrapExtraScroll = requiredExtraScroll;
+  }
 
   const overflowDelta = Math.max(layoutOverflow + requiredExtraScroll, visualOverflow);
-  const needsScroll = overflowDelta > 4;
-  wrapEl.classList.toggle("can-scroll", needsScroll);
+  // Hysterese verhindert Flackern bei Grenzwerten (kleines Fenster / hohe UI-Skalierung).
+  const turnOnThreshold = 10;
+  const turnOffThreshold = 2;
+  const needsScroll = wrapHasScroll ? overflowDelta > turnOffThreshold : overflowDelta > turnOnThreshold;
+
+  if (needsScroll !== wrapHasScroll) {
+    wrapHasScroll = needsScroll;
+    wrapEl.classList.toggle("can-scroll", needsScroll);
+  }
 }
 
 function queueWrapScrollState(): void {
@@ -2647,8 +2659,7 @@ renderTerminalTabs();
 window.addEventListener("resize", queueWrapScrollState);
 new MutationObserver(() => queueWrapScrollState()).observe(wrapEl, {
   childList: true,
-  subtree: true,
-  attributes: true
+  subtree: true
 });
 window.cmdfindDesktop.onTerminalOutput((sessionId, chunk) => {
   const targetId = Number.isFinite(sessionId) ? sessionId : 1;
